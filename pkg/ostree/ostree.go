@@ -6,6 +6,8 @@ package ostree
 
 import (
        "unsafe"
+
+      "github.com/14rcole/ostree-go/pkg/glibobject"
 )
 
 // #cgo pkg-config: ostree-1
@@ -43,9 +45,9 @@ func RepoNewOpen(path string) (*Repo, error) {
 	defer C.g_object_unref(C.gpointer(pathc))
 	crepo := C.ostree_repo_new(pathc)
 	repo := repoFromNative(crepo);
-	r := GoBool(C.ostree_repo_open(repo.native(), nil, &cerr))
+	r := glibobject.GoBool(C.ostree_repo_open(repo.native(), nil, &cerr))
 	if !r {
-		return nil, ConvertGError(cerr)
+		return nil, glibobject.ConvertGError(cerr)
 	}
 	return repo, nil
 }

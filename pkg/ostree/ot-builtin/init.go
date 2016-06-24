@@ -3,7 +3,7 @@ package ot-builtin
 import (
        "unsafe"
        "errors"
-       "github.com/14rcole/ostree-go/pkg/ostree
+       glib "github.com/14rcole/ostree-go/pkg/ostree/glibobject"
 )
 
 // #cgo pkg-config: ostree-1
@@ -21,9 +21,9 @@ func Init(path string, options map[string]string) (bool, error) {
 
   // If the repo exists, return an error but set exists to true
   var cerr *C.GError = nil
-  success := GoBool(C.ostree_repo_exists(crepo &exists, &cerr))
+  success := glib.GoBool(C.ostree_repo_exists(crepo &exists, &cerr))
   if !success {
-    return nil, ConvertGError(cerr)
+    return nil, glib.ConvertGError(cerr)
   } else if exists == 1{
     err = errors.New("repository already exists")
     return true, err
@@ -36,9 +36,9 @@ func Init(path string, options map[string]string) (bool, error) {
   crepo := C.ostree_repo_new(pathc)
   repo := repoFromnative(crepo)
   cerr = nil
-  created := GoBool(C.ostree_repo_create(repo.native(), OSTREE_REPO_MODE_BARE, FALSE, &cerr))
+  created := glib.GoBool(C.ostree_repo_create(repo.native(), OSTREE_REPO_MODE_BARE, FALSE, &cerr))
   if !created {
-    return false, ConvertGError(cerr)
+    return false, glib.ConvertGError(cerr)
   }
   return true, nil
 }

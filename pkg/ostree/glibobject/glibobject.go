@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package ostree
+package glibobject
 
 // #cgo pkg-config: glib-2.0 gobject-2.0
 // #include <glib.h>
