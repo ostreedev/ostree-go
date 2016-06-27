@@ -32,14 +32,16 @@ import (
 	"errors"
 )
 
-func GBool(b bool) C.gboolean {
+type GBoolean C.gboolean
+
+func GBool(b bool) GBoolean {
 	if b {
-		return C.gboolean(1)
+		return GBoolean(1)
 	}
-	return C.gboolean(0)
+	return GBoolean(0)
 }
 
-func GoBool(b C.gboolean) bool {
+func GoBool(b GBoolean) bool {
 	if b != 0 {
 		return true
 	}
@@ -181,7 +183,7 @@ func (v *GObject) RefSink() {
 
 func (v *GObject) IsFloating() bool {
 	c := C.g_object_is_floating(C.gpointer(v.ptr))
-	return GoBool(c)
+	return GoBool(GBoolean(c))
 }
 
 func (v *GObject) ForceFloating() {

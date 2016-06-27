@@ -7,11 +7,13 @@ import (
 
 func TestInit(t *testing.T) {
   // Create an empty directory is we know it's not a repo
-  err := os.Mkdir("/tmp/test-init-repo", 0777)
+  testDir := "/tmp/test-init-repo"
+  err := os.Mkdir(testDir, 0777)
   if (err != nil){
     t.Errorf("%s", err)
     return
   }
+  defer os.Remove(testDir)
 
   // Try to init the repo
   // In this case, inited should be true and err should be nil
