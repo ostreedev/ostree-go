@@ -3,6 +3,7 @@ package otbuiltin
 import (
        "errors"
        "strings"
+       "unsafe"
 
        glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -26,6 +27,7 @@ func Init(path string, options map[string]string) (bool, error) {
   //Create a repo struct from the path
   var gerr *glib.GError = nil
   var cerr = gerr.Native()
+  //var cerr *C.GError = nil
   cpath := C.CString(path)
   pathc := C.g_file_new_for_path(cpath)
   defer C.g_object_unref(pathc)
@@ -34,7 +36,7 @@ func Init(path string, options map[string]string) (bool, error) {
 
   // If the repo exists in the filesystem, return an error but set exists to true
   var exists C.gboolean = 0
-  success := glib.GoBool(C.ostree_repo_exists(crepo, &exists, &cerr))
+  success := glib.GoBool(C.ostree_repo_exists(crepo, &exists, (**C.GError)(unsafe.Pointer(&cerr))))
   if !success {
     return false, glib.ConvertGError(cerr)
   } else if exists == 1{
@@ -43,7 +45,7 @@ func Init(path string, options map[string]string) (bool, error) {
   }
 
   cerr = nil
-  created := glib.GoBool(C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, &cerr))
+  created := glib.GoBool(C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, (**C.GError)(unsafe.Pointer(&cerr))))
   if !created {
     return false, glib.ConvertGError(cerr)
   }

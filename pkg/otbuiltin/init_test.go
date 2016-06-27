@@ -3,8 +3,6 @@ package otbuiltin
 import (
        "testing"
        "os"
-
-       glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
 
 func TestInit(t *testing.T) {
