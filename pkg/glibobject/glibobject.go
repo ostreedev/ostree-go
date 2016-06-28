@@ -32,6 +32,8 @@ import (
 	"errors"
 )
 
+
+// GBoolean Functions
 type GBoolean C.gboolean
 
 func GBool(b bool) GBoolean {
@@ -48,26 +50,27 @@ func GoBool(b GBoolean) bool {
 	return false
 }
 
-type GError struct {
-	ptr unsafe.Pointer
-}
 
-func NewGError() GError {
-	return GError{nil}
-}
+// GError Functions
+type GError C.GError
 
-func (e *GError) Native() *C.GError {
+//func NewGError() GError {
+	//return GError{nil}
+//}
+
+func (e *GError) Raw() unsafe.Pointer {
 	if e == nil {
 		return nil
 	}
-	return (*C.GError)(e.ptr)
+	return unsafe.Pointer(e)
 }
 
-func ConvertGError(e *C.GError) error {
+func ConvertGError(e *GError) error {
 	defer C.g_error_free(e)
 	return errors.New(C.GoString((*C.char)(C._g_error_get_message(e))))
 }
 
+// GType Functions
 type GType uint
 
 func (t GType) Name() string {
