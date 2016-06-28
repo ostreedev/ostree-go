@@ -31,3 +31,17 @@ import (
 	"fmt"
 	"errors"
 )
+
+/*
+ * GError
+ */
+
+// GError is a representation of GLib's GError
+type GError C.GError
+
+func (e *GError) Ptr() unsafe.Pointer {
+	if e == nil {
+		return nil
+	}
+	return unsafe.Pointer(e)
+}

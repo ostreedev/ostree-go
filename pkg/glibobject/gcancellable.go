@@ -31,3 +31,15 @@ import (
 	"fmt"
 	"errors"
 )
+
+// GIO types
+
+type GCancellable struct {
+	*GObject
+}
+
+func (self *GCancellable) native() *C.GCancellable {
+	return (*C.GCancellable)(self.ptr)
+}
+
+// At the moment, no cancellable API, just pass nil

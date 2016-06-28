@@ -31,3 +31,50 @@ import (
 	"fmt"
 	"errors"
 )
+
+/*
+ * GObject
+ */
+
+// IObject is an interface type implemented by Object and all types which embed
+// an Object.  It is meant to be used as a type for function arguments which
+// require GObjects or any subclasses thereof.
+type IObject interface {
+	toGObject() *C.GObject
+	ToObject() *GObject
+}
+
+// GObject is a representation of GLib's GObject.
+type GObject C.GObject
+
+func (v *GObject) Ptr() unsafe.Pointer {
+	return unsafe.Pointer(v)
+}
+
+func (v *GObject) Native() *C.GObject {
+	if v == nil {
+		return nil
+	}
+	return (*C.GObject)(v.Ptr())
+}
+
+func (v *GObject) Ref() {
+	C.g_object_ref(C.gpointer(v.Ptr()))
+}
+
+func (v *GObject) Unref() {
+	C.g_object_unref(C.gpointer(v.Ptr()))
+}
+
+func (v *GObject) RefSink() {
+	C.g_object_ref_sink(v.Native())
+}
+
+func (v *GObject) IsFloating() bool {
+	c := C.g_object_is_floating(v.Native())
+	return GoBool(GBoolean(c))
+}
+
+func (v *GObject) ForceFloating() {
+	C.g_object_force_floating(v.Native())
+}

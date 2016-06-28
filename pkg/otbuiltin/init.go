@@ -33,7 +33,7 @@ func Init(path string, options map[string]string) (bool, error) {
 
   // If the repo exists in the filesystem, return an error but set exists to true
   var exists C.gboolean = 0
-  success := glib.GoBool(glib.GBoolean(C.ostree_repo_exists(crepo, &exists, (**C.GError)(cerr.Raw()))))
+  success := glib.GoBool(glib.GBoolean(C.ostree_repo_exists(crepo, &exists, (**C.GError)(cerr.Ptr()))))
   if exists == 1 {
     err = errors.New("repository already exists")
     return true, err
@@ -42,7 +42,7 @@ func Init(path string, options map[string]string) (bool, error) {
   }
 
   cerr = nil
-  gbool := C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, (**C.GError)(cerr.Raw()))
+  gbool := C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, (**C.GError)(cerr.Ptr()))
   //gbool2 := (glib.CGBool)(gbool)
   created := glib.GoBool(glib.GBoolean(gbool))
   if !created {

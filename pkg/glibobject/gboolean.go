@@ -31,3 +31,24 @@ import (
 	"fmt"
 	"errors"
 )
+
+/*
+ * GBoolean
+ */
+
+// GBoolean is a Go representation of glib's gboolean
+type GBoolean C.gboolean
+
+func GBool(b bool) GBoolean {
+	if b {
+		return GBoolean(1)
+	}
+	return GBoolean(0)
+}
+
+func GoBool(b GBoolean) bool {
+	if b != 0 {
+		return true
+	}
+	return false
+}
