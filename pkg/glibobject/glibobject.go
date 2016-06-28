@@ -77,25 +77,36 @@ func (t GType) Name() string {
 	return C.GoString((*C.char)(C.g_type_name(C.GType(t))))
 }
 
-type GVariant struct {
-	ptr unsafe.Pointer
-}
 
-func GVariantNew(p unsafe.Pointer) *GVariant {
-	o := &GVariant{p}
-	runtime.SetFinalizer(o, (*GVariant).Unref)
-	return o;
-}
+/*
+ * GVariant
+ */
 
-func GVariantNewSink(p unsafe.Pointer) *GVariant {
-	o := &GVariant{p}
-	runtime.SetFinalizer(o, (*GVariant).Unref)
-	o.RefSink()
-	return o;
-}
+//type GVariant struct {
+	//ptr unsafe.Pointer
+//}
+
+type GVariant C.GVariant
+
+//func GVariantNew(p unsafe.Pointer) *GVariant {
+	//o := &GVariant{p}
+	//runtime.SetFinalizer(o, (*GVariant).Unref)
+	//return o;
+//}
+
+//func GVariantNewSink(p unsafe.Pointer) *GVariant {
+	//o := &GVariant{p}
+	//runtime.SetFinalizer(o, (*GVariant).Unref)
+	//o.RefSink()
+	//return o;
+//}
 
 func (v *GVariant) native() *C.GVariant {
-	return (*C.GVariant)(v.ptr);
+	return (*C.GVariant)(v);
+}
+
+func (v *GVariant) Raw() unsafe.Pointer {
+	return unsafe.Pointer(v)
 }
 
 func (v *GVariant) Ref() {
