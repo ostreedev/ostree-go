@@ -204,7 +204,7 @@ func (v *GObject) ForceFloating() {
 
 // GIO types
 
-type GCancellable struct {
+type GCancellable struct {as
 	*GObject
 }
 
