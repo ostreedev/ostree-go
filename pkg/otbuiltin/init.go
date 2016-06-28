@@ -4,6 +4,7 @@ import (
        "errors"
        // #include "builtin.go.h"
        "strings"
+       "fmt"
 
        glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -46,6 +47,7 @@ func Init(path string, options map[string]string) (bool, error) {
   //gbool2 := (glib.CGBool)(gbool)
   created := glib.GoBool(glib.GBoolean(gbool))
   if !created {
+    fmt.Println("Error is here")
     return false, glib.ConvertGError(cerr)
   }
   return true, nil

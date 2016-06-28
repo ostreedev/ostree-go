@@ -27,16 +27,16 @@ package glibobject
 import "C"
 import (
 	"unsafe"
-	"runtime"
 	"fmt"
-	"errors"
 )
 
 /*
  * GVariant
  */
 
-type GVariant C.GVariant
+type GVariant struct {
+  ptr unsafe.Pointer
+}
 
 //func GVariantNew(p unsafe.Pointer) *GVariant {
 	//o := &GVariant{p}
@@ -52,11 +52,11 @@ type GVariant C.GVariant
 //}
 
 func (v *GVariant) native() *C.GVariant {
-	return (*C.GVariant)(v);
+	return (*C.GVariant)(v.ptr);
 }
 
-func (v *GVariant) Raw() unsafe.Pointer {
-	return unsafe.Pointer(v)
+func (v *GVariant) Ptr() unsafe.Pointer {
+	return v.ptr
 }
 
 func (v *GVariant) Ref() {
@@ -78,7 +78,7 @@ func (v *GVariant) TypeString() string {
 
 func (v *GVariant) GetChildValue(i int) *GVariant {
 	cchild := C.g_variant_get_child_value(v.native(), C.gsize(i))
-	return GVariantNew(unsafe.Pointer(cchild));
+	return (*GVariant)(unsafe.Pointer(cchild));
 }
 
 func (v *GVariant) LookupString(key string) (string, error) {

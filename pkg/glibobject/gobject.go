@@ -27,9 +27,6 @@ package glibobject
 import "C"
 import (
 	"unsafe"
-	"runtime"
-	"fmt"
-	"errors"
 )
 
 /*
@@ -45,17 +42,19 @@ type IObject interface {
 }
 
 // GObject is a representation of GLib's GObject.
-type GObject C.GObject
-
-func (v *GObject) Ptr() unsafe.Pointer {
-	return unsafe.Pointer(v)
+type GObject struct {
+	ptr unsafe.Pointer
 }
 
-func (v *GObject) Native() *C.GObject {
+func (v *GObject) Ptr() unsafe.Pointer {
+	return v.ptr
+}
+
+func (v *GObject) native() *C.GObject {
 	if v == nil {
 		return nil
 	}
-	return (*C.GObject)(v.Ptr())
+	return (*C.GObject)(v.ptr)
 }
 
 func (v *GObject) Ref() {
@@ -67,14 +66,14 @@ func (v *GObject) Unref() {
 }
 
 func (v *GObject) RefSink() {
-	C.g_object_ref_sink(v.Native())
+	C.g_object_ref_sink(v.native())
 }
 
 func (v *GObject) IsFloating() bool {
-	c := C.g_object_is_floating(v.Native())
+	c := C.g_object_is_floating(v.native())
 	return GoBool(GBoolean(c))
 }
 
 func (v *GObject) ForceFloating() {
-	C.g_object_force_floating(v.Native())
+	C.g_object_force_floating(v.native())
 }

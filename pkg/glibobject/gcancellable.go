@@ -25,11 +25,9 @@ package glibobject
 // #include "glibobject.go.h"
 // #include <stdlib.h>
 import "C"
+
 import (
-	"unsafe"
-	"runtime"
-	"fmt"
-	"errors"
+			 "unsafe"
 )
 
 // GIO types
@@ -39,7 +37,7 @@ type GCancellable struct {
 }
 
 func (self *GCancellable) native() *C.GCancellable {
-	return (*C.GCancellable)(self.ptr)
+	return (*C.GCancellable)(unsafe.Pointer(self))
 }
 
 // At the moment, no cancellable API, just pass nil

@@ -25,7 +25,7 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
   if p == nil {
     return nil
   }
-  o := glib.GObjectNew(unsafe.Pointer(p))
+  o := (*glib.GObject)(unsafe.Pointer(p))
   r := &Repo{o}
   return r
 }

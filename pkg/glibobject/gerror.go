@@ -27,8 +27,6 @@ package glibobject
 import "C"
 import (
 	"unsafe"
-	"runtime"
-	"fmt"
 	"errors"
 )
 
@@ -37,11 +35,32 @@ import (
  */
 
 // GError is a representation of GLib's GError
-type GError C.GError
+type GError struct {
+	ptr unsafe.Pointer
+}
+
+func NewGError(ptr unsafe.Pointer) GError {
+	if ptr == nil {
+		return GError{nil}
+	}
+	return GError{ptr}
+}
 
 func (e *GError) Ptr() unsafe.Pointer {
 	if e == nil {
 		return nil
 	}
-	return unsafe.Pointer(e)
+	return e.ptr
+}
+
+func (e *GError) native() *C.GError {
+	if e == nil || e.ptr == nil {
+		return nil
+	}
+	return (*C.GError)(e.ptr)
+}
+
+func ConvertGError(e *GError) error {
+	defer C.g_error_free(e.native())
+	return errors.New(C.GoString((*C.char)(C._g_error_get_message(e.native()))))
 }
