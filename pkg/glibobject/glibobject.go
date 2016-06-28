@@ -155,9 +155,7 @@ type IObject interface {
 }
 
 // Object is a representation of GLib's GObject.
-type GObject struct {
-	ptr unsafe.Pointer
-}
+type GObject C.GObject
 
 func GObjectNew(p unsafe.Pointer) *GObject {
 	o := &GObject{p}
@@ -166,14 +164,14 @@ func GObjectNew(p unsafe.Pointer) *GObject {
 }
 
 func (v *GObject) Ptr() unsafe.Pointer {
-	return v.ptr
+	return unsafe.Pointer(v)
 }
 
 func (v *GObject) Native() *C.GObject {
 	if v == nil || v.ptr == nil {
 		return nil
 	}
-	return (*C.GObject)(v.ptr)
+	return (*C.GObject)(v.Ptr())
 }
 
 func (v *GObject) toGObject() *C.GObject {
@@ -184,24 +182,24 @@ func (v *GObject) toGObject() *C.GObject {
 }
 
 func (v *GObject) Ref() {
-	C.g_object_ref(C.gpointer(v.ptr))
+	C.g_object_ref(C.gpointer(v.Ptr()))
 }
 
 func (v *GObject) Unref() {
-	C.g_object_unref(C.gpointer(v.ptr))
+	C.g_object_unref(C.gpointer(v.Ptr()))
 }
 
 func (v *GObject) RefSink() {
-	C.g_object_ref_sink(C.gpointer(v.ptr))
+	C.g_object_ref_sink(v.Native())
 }
 
 func (v *GObject) IsFloating() bool {
-	c := C.g_object_is_floating(C.gpointer(v.ptr))
+	c := C.g_object_is_floating(v.Native())
 	return GoBool(GBoolean(c))
 }
 
 func (v *GObject) ForceFloating() {
-	C.g_object_force_floating((*C.GObject)(v.ptr))
+	C.g_object_force_floating(v.Native())
 }
 
 // GIO types
