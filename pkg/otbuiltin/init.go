@@ -17,7 +17,7 @@ import (
 import "C"
 
 // Declare variables for options
-var mode string = "bare"
+var mode C.OstreeRepoMode = C.OSTREE_REPO_MODE_BARE
 
 func Init(path string, options map[string]string) (bool, error) {
   err := parseArgs(options)
@@ -41,10 +41,10 @@ func Init(path string, options map[string]string) (bool, error) {
     return true, err
   } else if !success {
     return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
-  } 
+  }
 
   cerr = nil
-  created := glib.GoBool(glib.GBoolean(C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, &cerr)))
+  created := glib.GoBool(glib.GBoolean(C.ostree_repo_create(crepo, mode, nil, &cerr)))
   if !created {
     fmt.Println("Error is here")
     return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
@@ -56,9 +56,11 @@ func parseArgs (options map[string]string) error {
   for key, val := range options {
     if strings.EqualFold(key, "mode"){
       if strings.EqualFold("bare", val) {
-        mode = "OSTREE_REPO_MODE_BARE"
+        mode = C.OSTREE_REPO_MODE_BARE
       } else if strings.EqualFold("archive-z2", val) {
-        mode = "OSTREE_REPO_MODE_ARCHIVE_Z2"
+        mode = C.OSTREE_REPO_MODE_ARCHIVE_Z2
+      } else if strings.EqualFold("bare-user", val) {
+        mode = C.OSTREE_REPO_MODE_BARE_USER
       } else {
         return errors.New("Invalid option for mode")
       }
