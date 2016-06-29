@@ -13,6 +13,7 @@ func TestInit(t *testing.T) {
     t.Errorf("%s", err)
     return
   }
+  defer os.RemoveAll(testDir)
 
   // Try to init the repo
   // In this case, inited should be true and err should be nil
@@ -21,6 +22,4 @@ func TestInit(t *testing.T) {
     t.Errorf("%s", err)
     return
   }
-
-  os.Remove(testDir)
 }
