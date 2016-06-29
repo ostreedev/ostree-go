@@ -2,9 +2,9 @@ package otbuiltin
 
 import (
        "errors"
-       // #include "builtin.go.h"
        "strings"
        "fmt"
+       "unsafe"
 
        glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -13,6 +13,7 @@ import (
 // #include <stdlib.h>
 // #include <glib.h>
 // #include <ostree.h>
+// #include "builtin.go.h"
 import "C"
 
 // Declare variables for options
@@ -25,30 +26,28 @@ func Init(path string, options map[string]string) (bool, error) {
   }
 
   //Create a repo struct from the path
-  var cerr *glib.GError = nil
-  //var cerr *C.GError = nil
+  var gerr = glib.NewGError()
+  cerr := (*C.GError)(gerr.Ptr())
   cpath := C.CString(path)
   pathc := C.g_file_new_for_path(cpath)
   defer C.g_object_unref(pathc)
   crepo := C.ostree_repo_new(pathc)
 
   // If the repo exists in the filesystem, return an error but set exists to true
-  var exists C.gboolean = 0
-  success := glib.GoBool(glib.GBoolean(C.ostree_repo_exists(crepo, &exists, (**C.GError)(cerr.Ptr()))))
-  if exists == 1 {
+  exists := glib.NewGBoolean()
+  success := glib.GoBool(glib.GBoolean(C.ostree_repo_exists(crepo, (*C.gboolean)(exists.Ptr()), &cerr)))
+  if exists != 0 {
     err = errors.New("repository already exists")
     return true, err
   } else if !success {
-    return false, glib.ConvertGError(cerr)
+    return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
   }
 
   cerr = nil
-  gbool := C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, (**C.GError)(cerr.Ptr()))
-  //gbool2 := (glib.CGBool)(gbool)
-  created := glib.GoBool(glib.GBoolean(gbool))
+  created := glib.GoBool(glib.GBoolean(C.ostree_repo_create(crepo, C.OSTREE_REPO_MODE_BARE, nil, &cerr)))
   if !created {
     fmt.Println("Error is here")
-    return false, glib.ConvertGError(cerr)
+    return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
   }
   return true, nil
 }

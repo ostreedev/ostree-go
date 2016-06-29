@@ -39,18 +39,19 @@ type GError struct {
 	ptr unsafe.Pointer
 }
 
-func NewGError(ptr unsafe.Pointer) GError {
-	if ptr == nil {
-		return GError{nil}
-	}
-	return GError{ptr}
+func NewGError() GError {
+	return GError{nil}
 }
 
-func (e *GError) Ptr() unsafe.Pointer {
-	if e == nil {
+func (e GError) Ptr() unsafe.Pointer {
+	if e.ptr == nil  {
 		return nil
 	}
 	return e.ptr
+}
+
+func (e GError) Nil()  {
+	e.ptr = nil
 }
 
 func (e *GError) native() *C.GError {
@@ -60,7 +61,11 @@ func (e *GError) native() *C.GError {
 	return (*C.GError)(e.ptr)
 }
 
-func ConvertGError(e *GError) error {
+func ToGError(ptr unsafe.Pointer) GError {
+	return GError{ptr}
+}
+
+func ConvertGError(e GError) error {
 	defer C.g_error_free(e.native())
 	return errors.New(C.GoString((*C.char)(C._g_error_get_message(e.native()))))
 }

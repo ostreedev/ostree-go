@@ -18,6 +18,10 @@
 
 package glibobject
 
+import (
+			 "unsafe"
+)
+
 // #cgo pkg-config: glib-2.0 gobject-2.0
 // #include <glib.h>
 // #include <glib-object.h>
@@ -33,11 +37,19 @@ import "C"
 // GBoolean is a Go representation of glib's gboolean
 type GBoolean C.gboolean
 
+func NewGBoolean() GBoolean {
+	return GBoolean(0)
+}
+
 func GBool(b bool) GBoolean {
 	if b {
 		return GBoolean(1)
 	}
 	return GBoolean(0)
+}
+
+func (b GBoolean) Ptr() unsafe.Pointer {
+	return unsafe.Pointer(&b)
 }
 
 func GoBool(b GBoolean) bool {
