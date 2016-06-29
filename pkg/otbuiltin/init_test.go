@@ -22,4 +22,17 @@ func TestInit(t *testing.T) {
     t.Errorf("%s", err)
     return
   }
+
+  // Try to init the repo
+  // In this case, inited should be true and err should be false
+  inited, err = Init("/tmp/test-init-repo", nil)
+  if !inited {
+    if err == nil {
+      t.Errorf("Error initing repo that already exists")
+      return
+    } else {
+      t.Errorf("%s", err)
+      return
+    }
+  }
 }
