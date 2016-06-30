@@ -16,6 +16,8 @@ import (
 // #include "builtin.go.h"
 import "C"
 
+var options CheckoutOptions
+
 type CheckoutOptions struct {
   UserMode        bool    // Do not change file ownership or initialize extended attributes
   DisableCache    bool    // Do not update or use the internal repository uncompressed object
@@ -25,6 +27,17 @@ type CheckoutOptions struct {
   FromFile        string  // Process many checkouts from the given file
 }
 
-func Checkout(repo, filepath, commit string, options CheckoutOptions) error {
+func Checkout(repo, filepath, commit string, opts CheckoutOptions) error {
+  if opts != (CheckoutOptions{}) {
+    options = opts
+  }
   return nil
+}
+
+func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination string, cancellable glib.GCancellable) error {
+
+}
+
+func processManyCheckouts(OstreeRepo *repo, target string, cancellable glib.GCancellable) error {
+
 }
