@@ -16,10 +16,6 @@ import (
 // #include "builtin.go.h"
 import "C"
 
-func Checkout(repo, filepath, commit string, options CheckoutOptions) error {
-  return nil
-}
-
 type CheckoutOptions struct {
   UserMode        bool    // Do not change file ownership or initialize extended attributes
   DisableCache    bool    // Do not update or use the internal repository uncompressed object
@@ -27,4 +23,8 @@ type CheckoutOptions struct {
   AllowNoent      bool    // Do nothing if the specified filepath does not exist
   Subpath         string  // Checkout sub-directory path
   FromFile        string  // Process many checkouts from the given file
+}
+
+func Checkout(repo, filepath, commit string, options CheckoutOptions) error {
+  return nil
 }
