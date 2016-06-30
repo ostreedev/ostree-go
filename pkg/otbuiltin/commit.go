@@ -14,12 +14,13 @@ import "C"
 const nilOptions CommitOptions = nil
 var options CommitOptions = nilOptions
 
-func Commit(path string, opts CommitOptions) error {
+// This works for now but don't expect the options to do much
+func OldCommit(path string, opts CommitOptions) error {
   // Parse the arguments
   if opts != nilOptions {
     options = opts
   }
-
+  /* CHECK TO MAKE SURE THE REPO IS WRITABLE */
   // Prepare for the Commit
   repo, err := openRepo(path)
   if err != nil {
@@ -53,6 +54,10 @@ func Commit(path string, opts CommitOptions) error {
   return nil
 }
 
+func Commit(path string, options CommitOptions) {
+
+}
+
 
 type CommitOptions struct {
   Subject                   string    // One line subject
@@ -67,7 +72,7 @@ type CommitOptions struct {
   LinkCheckoutSpeedup       bool      // Optimize for commits of trees composed of hardlinks in the repository
   TarAuotocreateParents     bool      // When loading tar archives, automatically create parent directories as needed
   SkipIfUnchanged           bool      // If the contents are unchanged from a previous commit, do nothing
-  StatOverride              string    // File containing list of
+  StatOverride              string    // File containing list of modifications to make permissions
   TableOutput               bool      // Output more information in a KEY: VALUE format
   GenerateSizes             bool      // Generate size information along with commit metadata
   GpgSign                   []string  // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
