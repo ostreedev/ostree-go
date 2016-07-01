@@ -30,30 +30,24 @@ import (
 )
 
 /*
- * GFile
+ * GFileInfo
  */
 
- type GFile struct {
+ type GFileInfo struct {
    ptr unsafe.Pointer
  }
 
- func (f GFile) Ptr() unsafe.Pointer {
-   return f.ptr
+ func (fi GFileInfo) Ptr() unsafe.Pointer {
+   return fi.ptr
  }
 
- func NewGFile() *GFile {
-	 return &GFile{nil}
+ func NewGFileInfo() *GFileInfo {
+	 var fi GFileInfo{nil}
+	 return fi
  }
 
- func ToGFile(ptr unsafe.Pointer) *GFile {
-   gf := NewGFile()
-   gf.ptr = ptr
-   return gf
-	 return GFile{nil}
- }
-
- func ToGFile(ptr unsafe.Pointer) *GFile {
-   gf := NewGFile()
-   gf.ptr = ptr
-   return gf
+ func ToGFileInfo(p unsafe.Pointer) *GFileInfo {
+	 fi := NewGFileInfo()
+	 fi.ptr = p
+	 return fi
  }
