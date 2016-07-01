@@ -22,3 +22,15 @@ type PruneOptions struct {
   Depth             int = -1  // Only traverse depths (integer) parents for each commit (default: -1=infinite)
   StaticDeltasOnly  int       // Change the behavior of --keep-younger-than and --delete-commit to prune only the static delta files
 }
+
+func Prune(repo string) error{
+  return nil
+}
+
+func deleteCommit(repo *OstreeRepo, commitToDelete string, cancellable *GCancellable) error {
+  return nil
+}
+
+func pruneCommitsKeepYoungerThanDate(repo *OstreeRepo, date time.Time, cancellable *GCancellable) error {
+  return nil
+}
