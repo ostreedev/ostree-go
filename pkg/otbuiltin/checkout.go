@@ -45,7 +45,7 @@ func Checkout(repoPath, destination, commit string, options CheckoutOptions) err
   cerr := (*C.GError)(gerr.Ptr())
 
   if opts.userOpts.FromFile {
-    err := processManyCheckouts(repo, destination, cancellable) // IMPLEMENT GCANCELLABLE IN GLIBOBJECT BEFORE WRITING TESTS FOR THIS CODE
+    err := processManyCheckouts(repo, destination, (C.GCancellable)(cancellable.Ptr()))
     if err != nil {
       return err
     }
@@ -55,7 +55,7 @@ func Checkout(repoPath, destination, commit string, options CheckoutOptions) err
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
 
-    err := processOneCheckout(repo, resolvedCommit, opts.userOpts.Subpath, destination, cancellable)
+    err := processOneCheckout(repo, resolvedCommit, opts.userOpts.Subpath, destination, (C.GCancellable)(cancellable.Ptr()))
     if err != nil {
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
