@@ -33,18 +33,32 @@ type CheckoutOptions struct {
   FromFile        string  // Process many checkouts from the given file
 }
 
-func Checkout(repo, destination, commit string, options CheckoutOptions) error {
+func Checkout(repoPath, destination, commit string, options CheckoutOptions) error {
   if options != (CheckoutOptions{}) {
     opts.userOpts = options
   }
 
+  repo := openRepo(repoPath);
+  ccommit := C.Cstring(commit)
+  cdest := C.CString(destination)
+  var gerr = glib.NewGError()
+  cerr := (*C.GError)(gerr.Ptr())
+
   if opts.userOpts.FromFile {
-    err := processManyCheckouts(repo, destination, cancellable)
+    err := processManyCheckouts(repo, destination, cancellable) // IMPLEMENT GCANCELLABLE IN GLIBOBJECT BEFORE WRITING TESTS FOR THIS CODE
     if err != nil {
       return err
     }
   } else {
+    var resolvedCommit string
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo, ccommit, FALSE, &C.CString(resolvedCommit), cerr))) {
+      return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+    }
 
+    err := processOneCheckout(repo, resolvedCommit, opts.userOpts.Subpath, destination, cancellable)
+    if err != nil {
+      return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+    }
   }
   return nil
 }
