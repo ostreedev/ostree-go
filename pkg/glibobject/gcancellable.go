@@ -40,4 +40,8 @@ func (self *GCancellable) native() *C.GCancellable {
 	return (*C.GCancellable)(unsafe.Pointer(self))
 }
 
+func (self *GCancellable) Ptr() *C.GCancellable {
+	return unsafe.Pointer(self)
+}
+
 // At the moment, no cancellable API, just pass nil
