@@ -33,9 +33,18 @@ type CheckoutOptions struct {
   FromFile        string  // Process many checkouts from the given file
 }
 
-func Checkout(repo, filepath, commit string, options CheckoutOptions) error {
+func Checkout(repo, destination, commit string, options CheckoutOptions) error {
   if options != (CheckoutOptions{}) {
     opts.userOpts = options
+  }
+
+  if opts.userOpts.FromFile {
+    err := processManyCheckouts(repo, destination, cancellable)
+    if err != nil {
+      return err
+    }
+  } else {
+
   }
   return nil
 }
@@ -64,14 +73,14 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
     return nil
   } else {
     csubpath := C.CString(subpath)
-    var tmpErr glib.NewGError()
+    var tmpErr *glib.GError = &glib.NewGError()
     var root *glib.GFile = nil
     var subtree *glib.GFile = nil
     var fileInfo *glib.GFileInfo = nil
     var dest = C.CString(destination)
     var destinationFile = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(cdest)))
 
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo, ccommit, &(*C.GFile)(root.Ptr()), NULL, (*C.gcancellable)cancellable.Ptr(), cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), ccommit, &(*C.GFile)(root.Ptr()), NULL, (*C.gcancellable)cancellable.Ptr(), cerr))) {
       return glib.ToGError(unsafe.Pointer(cerr))
     }
 
@@ -84,10 +93,21 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
     cerr = nil
     fileInfo = glib.ToGFileInfo(C.g_file_query_info((*C.GFile)subtree.Ptr(), C.OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, (*C.gcancellable)cancellable.Ptr(), cerr)
 
-    
+    if !fileInfo {
+      if opts.userOpts.AllowNoent && glib.Gobool(glib.GBoolean(C.g_error_matches((*C.GError)tmpErr.Ptr(), C.G_IO_ERROR, C.G_IO_ERROR_NOT_FOUND))) {
+        C.g_error_clear((**C.GError)(tmpError.Ptr()))
+      } else {
+        C.g_propagate_error(cerr, (**C.GError)(tmpError.Ptr()))
+        return glib.ToGError(unsafe.Pointer(cerr))
+      }
+    }
+
+    // C.ostree_repo_checkout_tree(repo.native(), )
   }
+
+  return nil
 }
 
 func processManyCheckouts(OstreeRepo *repo, target string, cancellable glib.GCancellable) error {
-
+  return nil
 }
