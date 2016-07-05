@@ -17,12 +17,6 @@ import (
 import "C"
 
 var options CheckoutOptions
-type options struct {
-  userOpts          CheckoutOptions
-  mode              int
-  overwriteMode     int
-}
-var opts options
 
 type CheckoutOptions struct {
   UserMode        bool    // Do not change file ownership or initialize extended attributes
@@ -31,11 +25,14 @@ type CheckoutOptions struct {
   AllowNoent      bool    // Do nothing if the specified filepath does not exist
   Subpath         string  // Checkout sub-directory path
   FromFile        string  // Process many checkouts from the given file
+
+  mode            int
+  overwriteMode   int
 }
 
-func Checkout(repoPath, destination, commit string, options CheckoutOptions) error {
+func Checkout(repoPath, destination, commit string, opts CheckoutOptions) error {
   if options != (CheckoutOptions{}) {
-    opts.userOpts = options
+    options = opts
   }
 
   repo := openRepo(repoPath);
@@ -44,7 +41,7 @@ func Checkout(repoPath, destination, commit string, options CheckoutOptions) err
   var gerr = glib.NewGError()
   cerr := (*C.GError)(gerr.Ptr())
 
-  if opts.userOpts.FromFile {
+  if options.FromFile {
     err := processManyCheckouts(repo, destination, (C.GCancellable)(cancellable.Ptr()))
     if err != nil {
       return err
@@ -55,7 +52,7 @@ func Checkout(repoPath, destination, commit string, options CheckoutOptions) err
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
 
-    err := processOneCheckout(repo, resolvedCommit, opts.userOpts.Subpath, destination, (C.GCancellable)(cancellable.Ptr()))
+    err := processOneCheckout(repo, resolvedCommit, options.Subpath, destination, (C.GCancellable)(cancellable.Ptr()))
     if err != nil {
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
@@ -69,14 +66,14 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
   var gerr = glib.NewGError()
   cerr := (*C.GError)(gerr.Ptr())
 
-  if opts.userOpts.DisableCache {
+  if options.DisableCache {
     C.OstreeRepoCheckoutOptions options = nil;
 
-    if opts.userOpts.UserMode {
-      opts.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
+    if options.UserMode {
+      options.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
     }
-    if opts.userOpts.Union {
-      opts.overwriteMode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+    if options.Union {
+      options.overwriteMode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
     }
 
 
@@ -91,14 +88,14 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
     var root *glib.GFile = nil
     var subtree *glib.GFile = nil
     var fileInfo *glib.GFileInfo = nil
-    var dest = C.CString(destination)
+    var c dest = C.CString(destination)
     var destinationFile = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(cdest)))
 
     if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), ccommit, &(*C.GFile)(root.Ptr()), NULL, (*C.gcancellable)cancellable.Ptr(), cerr))) {
       return glib.ToGError(unsafe.Pointer(cerr))
     }
 
-    if opts.userOpts.Subpath {
+    if options.Subpath {
       subtree = glib.ToGFile(C.g_file_resolve_relative_path((C.GFile)root.Ptr(), csubpath))
     } else {
       subtree = glib.ToGFile(C.g_object_ref(root))
@@ -108,7 +105,7 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
     fileInfo = glib.ToGFileInfo(C.g_file_query_info((*C.GFile)subtree.Ptr(), C.OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, (*C.gcancellable)cancellable.Ptr(), cerr)
 
     if !fileInfo {
-      if opts.userOpts.AllowNoent && glib.Gobool(glib.GBoolean(C.g_error_matches((*C.GError)tmpErr.Ptr(), C.G_IO_ERROR, C.G_IO_ERROR_NOT_FOUND))) {
+      if options.AllowNoent && glib.Gobool(glib.GBoolean(C.g_error_matches((*C.GError)tmpErr.Ptr(), C.G_IO_ERROR, C.G_IO_ERROR_NOT_FOUND))) {
         C.g_error_clear((**C.GError)(tmpError.Ptr()))
       } else {
         C.g_propagate_error(cerr, (**C.GError)(tmpError.Ptr()))
@@ -116,7 +113,10 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
       }
     }
 
-    // C.ostree_repo_checkout_tree(repo.native(), )
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree(repo.native(), checkUserMode(), checkUnion(), cdest, C.OSTREE_REPO_FILE (*C.GFile)(subtree.Ptr()),
+                                  fileInfo, (*C.GFileInfo)(fileInfo.Ptr()), (*C.gcancellable)(cancellable.Ptr()), cerr))) {
+      return glib.ToGError(unsafe.Pointer(cerr))
+    }
   }
 
   return nil
@@ -124,4 +124,14 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
 
 func processManyCheckouts(OstreeRepo *repo, target string, cancellable glib.GCancellable) error {
   return nil
+}
+
+func checkUserMode() int {
+  if options.UserMode { return C.OSTREE_REPO_CHECKOUT_MODE_USER }
+  return 0
+}
+
+func checkUnion() int {
+  if options.Union { return C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES }
+  return 0
 }
