@@ -30,7 +30,7 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
   return r
 }
 
-openRepo(path string) (*Repo, err) {
+func openRepo(path string) (*Repo, err) {
   var cerr *C.GError = nil
 	cpath := C.CString(path)
 	pathc := C.g_file_new_for_path(cpath);
