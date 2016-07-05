@@ -29,3 +29,17 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
   r := &Repo{o}
   return r
 }
+
+openRepo(path string) (*Repo, err) {
+  var cerr *C.GError = nil
+	cpath := C.CString(path)
+	pathc := C.g_file_new_for_path(cpath);
+	defer C.g_object_unref(C.gpointer(pathc))
+	crepo := C.ostree_repo_new(pathc)
+	repo := repoFromNative(crepo);
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_open(repo.native(), nil, &cerr)))
+	if !r {
+		return nil, glibobject.ConvertGError(cerr)
+	}
+	return repo, nil
+}
