@@ -91,3 +91,7 @@ func (v *GVariant) LookupString(key string) (string, error) {
 	}
 	return C.GoString(cstr), nil
 }
+
+func ToGVariant(ptr unsafe.Pointer) GVariant {
+	return GVariant{ptr}
+}
