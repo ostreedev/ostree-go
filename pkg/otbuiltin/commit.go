@@ -4,6 +4,7 @@ import (
   "time"
   "errors"
   "strings"
+  "strconv"
   "buffer"
 
   glib "github.com/14rcole/ostree-go/pkg/glibobject"
@@ -67,8 +68,8 @@ func Commit(path string, opts CommitOptions) {
   cpath := C.CString(path)
   var gerr = glib.NewGError()
   cerr = (*C.GError)(gerr.Ptr())
-  var metadata *GVariant
-  var detachedMetadata *GVariant
+  var metadata *GVariant = nil
+  var detachedMetadata *GVariant = nil
   var flags C.OstreeRepoCommitModifierFlags = 0
   var modifier *C.OstreeRepoCommitModifier
   var modeAdds *glib.GHashTable
@@ -179,7 +180,6 @@ func Commit(path string, opts CommitOptions) {
 
   if skipList != nil && C.g_hash_table_size((*C.GHashTable)(skipList.Ptr())) > 0 {
     C.GHashTableIter hashIter
-
     C.gpointer key
 
     C.g_hash_table_iter_init(&hashIter, (*C.GHashTable)(skipList.Ptr()))
@@ -209,7 +209,78 @@ func Commit(path string, opts CommitOptions) {
   }
 
   if !skipCommit {
-    // TODO: ADD STUFF HERE
+    var updateSummary C.GBoolean
+    var timestamp C.guint64
+    if options.Timestamp == time.Time{} {
+      var now *C.GDateTime = g_date_time_new_now_utc()
+      timestamp C.g_date_time_to_unix(now)
+      C.g_date_time_unref(now)
+
+      cerr = nil
+      if !glib.GoBool(glib.GBoolean(ostree_repo_write_commit(repo.native(), cparent, csubject, cbody,
+                     (*C.GVariant)(metadata.Ptr()), C.OSTREE_REPO_FILE((*C.GFile)(root.Ptr())), &C.CString(commitChecksum), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+        goto out
+      }
+    } else {
+      var ts C.timespec
+      var timestampStr = strconv.FormatInt(options.Timestamp.Unix(), 10)
+      if !C.parse_datetime(&ts, timestampStr, nil) {
+        C.g_set_error(cerr, C.G_IO_ERROR, C.G_IO_ERROR_FAILED, "Could not parse %s", timestampStr)
+        goto out
+      }
+      timestamp =  ts.tv_sec
+    }
+
+    cerr = nil
+    if !glib.GoBool(glib.GBoolean(ostree_repo_write_commit_with_time(repo.native(), cparent, csubject, cbody,
+                   (*C.GVariant)(metadata.Ptr()), C.OSTREE_REPO_FILE((*C.GFile)(root.Ptr())), timestamp, &C.CString(commitChecksum), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+      goto out
+    }
+
+    if detachedMetadata != nil {
+      cerr = nil
+      C.ostree_repo_write_commit_detached_metadata(repo.native(), C.CString(commitChecksum), (*C.GVariant)(detachedMetadata.Ptr()), (*C.GCancellable)(cancellable.Ptr()), cerr)
+    }
+
+    if options.GpgSign != nil {
+      for key := range options.GpgSign {
+        cerr = nil
+        if !glib.GoBool(glib.GBoolean(ostree_repo_sign_commit(repo.native(), C.CString(commitChecksum), C.CString(key), C.CString(options.GpgHomedir), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+          goto out
+        }
+      }
+
+      if options.Branch != "" {
+        C.ostree_repo_transaction_set_ref(repo.native(), nil, cbranch, C.CString(commitChecksum))
+      } else if !options.Orphan {
+        return errors.New("Error: commit must have a branch or be an orphan")
+      }
+
+      cerr = nil
+      if !glib.GoBool(glib.GBoolean(ostree_repo_commit_transaction(repo.native(), &stats, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+        goto out
+      }
+
+      /* The default for this option is FALSE, even for archive-z2 repos,
+       * because ostree supports multiple processes committing to the same
+       * repo (but different refs) concurrently, and in fact gnome-continuous
+       * actually does this.  In that context it's best to update the summary
+       * explicitly instead of automatically here. */
+      /*
+      TODO: I think this function is declared outside of libostree so I have to hunt it down
+      This is the C code:
+
+      if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
+                                                "commit-update-summary", FALSE,
+                                                &update_summary, error))
+        goto out;
+      */
+
+      cerr = nil
+      if glib.GoBool(updateSummary) &&  !glib.GoBool(glib.GBoolean(ostree_repo_regenerate_summary(repo.native(), nil, (*C.GCancellable)(cancellable), cerr))) {
+        goto out
+      }
+    }
   } else {
     commitChecksum = parent
   }
@@ -312,26 +383,26 @@ func handleSkipListline(line string, table *glib.GHashTable) error {
 type handleLineFunc func(string, *glib.GHashTable) error
 
 type CommitOptions struct {
-  Subject                   string      // One line subject
-  Body                      string      // Full description
-  Parent                    string      // Parent of the commit
-  Branch                    string      // branch --> required unless Orphan is true`
-  Tree                      []string    // 'dir=PATH' or 'tar=TARFILE' or 'ref=COMMIT': overlay the given argument as a tree
-  AddMetadataString         []string      // Add a key/value pair to metadata
-  AddDetachedMetadataString []string      // Add a key/value pair to detached metadata
-  OwnerUID                  int = -1    // Set file ownership to user id
-  OwnerGID                  int = -1    // Set file ownership to group id
-  NoXattrs                  bool        // Do not import extended attributes
-  LinkCheckoutSpeedup       bool        // Optimize for commits of trees composed of hardlinks in the repository
-  TarAuotocreateParents     bool        // When loading tar archives, automatically create parent directories as needed
-  SkipIfUnchanged           bool        // If the contents are unchanged from a previous commit, do nothing
-  StatOverrideFile          string      // File containing list of modifications to make permissions
-  SkipListFile              string      // File containing list of file paths to skip
-  TableOutput               bool        // Output more information in a KEY: VALUE format
-  GenerateSizes             bool        // Generate size information along with commit metadata
-  GpgSign                   []string    // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
-  GpgHomedir                string      // GPG home directory to use when looking for keyrings (if you have GPGME - GNU Privacy Guard Made Easy)
-  Timestamp                 time.Time   // Override the timestamp of the commit
-  Orphan                    bool        // Commit does not belong to a branch
-  Fsync                     bool = true // Specify whether fsync should be used or not.  Default to true
+  Subject                   string          // One line subject
+  Body                      string          // Full description
+  Parent                    string          // Parent of the commit
+  Branch                    string          // branch --> required unless Orphan is true`
+  Tree                      []string        // 'dir=PATH' or 'tar=TARFILE' or 'ref=COMMIT': overlay the given argument as a tree
+  AddMetadataString         []string        // Add a key/value pair to metadata
+  AddDetachedMetadataString []string        // Add a key/value pair to detached metadata
+  OwnerUID                  int = -1        // Set file ownership to user id
+  OwnerGID                  int = -1        // Set file ownership to group id
+  NoXattrs                  bool            // Do not import extended attributes
+  LinkCheckoutSpeedup       bool            // Optimize for commits of trees composed of hardlinks in the repository
+  TarAuotocreateParents     bool            // When loading tar archives, automatically create parent directories as needed
+  SkipIfUnchanged           bool            // If the contents are unchanged from a previous commit, do nothing
+  StatOverrideFile          string          // File containing list of modifications to make permissions
+  SkipListFile              string          // File containing list of file paths to skip
+  TableOutput               bool            // Output more information in a KEY: VALUE format
+  GenerateSizes             bool            // Generate size information along with commit metadata
+  GpgSign                   []string = nil  // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
+  GpgHomedir                string          // GPG home directory to use when looking for keyrings (if you have GPGME - GNU Privacy Guard Made Easy)
+  Timestamp                 time.Time       // Override the timestamp of the commit
+  Orphan                    bool            // Commit does not belong to a branch
+  Fsync                     bool = true     // Specify whether fsync should be used or not.  Default to true
 }
