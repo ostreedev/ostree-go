@@ -260,10 +260,53 @@ func parseKeyValueStrings(strings []string, metadata *GVariant) error {
   return nil
 }
 
-func parseFileByLine() error {
+func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, cancellable *glib.GCancellable) error {
+  var contents C.CString
+  var file *glib.GFile
+  var lines []string
+  var gerr = glib.NewGError()
+  cerr = (*C.GError)(gerr.Ptr())
+
+  file = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(path))))
+  if !glib.GoBool(glib.GBoolean(C.g_file_load_contents((*C.GFile)(file.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &contents, nil, nil, cerr))) {
+    return glib.ToGError((*C.GError)(unsafe.Pointer(cerr)))
+  }
+
+  lines = strings.Split(C.GoString(contents))
+  for line := range lines {
+    if line == nil {
+      continue
+    }
+
+    if err := handleLineFunc(line, table); err != nil {
+      return glib.ToGError((*C.GError)(unsafe.Pointer(cerr)))
+    }
+  }
   return nil
 }
 
+func handleStatOverrideLine(line string, table *glib.GHashTable) error {
+  var space int
+  var modeAdd C.guint
+
+  if space = strings.IndexRune(line, ' '); space = -1 {
+    return errors.New("Malformed StatOverrideFile (no space found)")
+  }
+
+  modeAdd = (C.guint32)(C.gint32)(C.g_ascii_strtod(C.CString(line), nil))
+  C.g_hash_table_insert((*C.GHashTable)(table.Ptr()), C.g_strdup(C.CString(line[space+1:]), C.GUINT_TO_POINTER((gint32)(modeAdd))))
+
+  return nil
+}
+
+func handleSkipListline(line string, table *glib.GHashTable) error {
+  C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.g_strdup(C.CString(line)))
+
+  return nil
+}
+
+
+type handleLineFunc func(string, *glib.GHashTable) error
 
 type CommitOptions struct {
   Subject                   string      // One line subject
