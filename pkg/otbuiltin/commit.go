@@ -79,6 +79,7 @@ func Commit(path string, opts CommitOptions) {
   var ret string = nil
   var commitChecksum string
   var stats C.OStreeRepoTransactionStats
+  var filter_data C.CommitFilterData = { 0, }
 
   csubject := C.CString(options.Subject)
   cbody := C.CString(options.Body)
@@ -134,7 +135,9 @@ func Commit(path string, opts CommitOptions) {
   }
 
   if flags != 0 || options.OwnerUID >= 0 || options.OwnerGID >= 0 || options.StatOverrideFile != nil || NoXattrs {
-    // DO STUFF
+    filter_data.mode_adds = (*C.GHashTable)(modeAdds.Ptr())
+    filter_data.skip_list = (*C.GHashTable)(skipList.Ptr())
+    modifier = C.ostree_repo_commit_modifier_new(flags, C._commit_filter, &filter_data, nil)
   }
 
   if options.Parent != nil {

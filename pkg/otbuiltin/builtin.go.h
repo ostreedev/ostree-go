@@ -1,3 +1,4 @@
+#include <glib.h>
 #include <ostree.h>
 #include <string.h>
 
@@ -6,35 +7,41 @@ _ostree_repo_append_modifier_flags(OstreeRepoCommitModifierFlags *flags, int fla
   *flags |= flag;
 }
 
-static gboolean
-_handle_statoverride_line (const char  *line,
-                          void        *data,
-                          GError     **error)
-{
-  GHashTable *files = data;
-  const char *spc;
-  guint mode_add;
+struct CommitFilterData {
+  GHashTable *mode_adds;
+  GhashTable *skip_list;
+};
 
-  spc = strchr (line, ' ');
-  if (spc == NULL)
+static OstreeRepoCommitFilterResult
+_commit_filter (OstreeRepo         *self,
+               const char         *path,
+               GFileInfo          *file_info,
+               gpointer            user_data)
+{
+  struct CommitFilterData *data = user_data;
+  GHashTable *mode_adds = data->mode_adds;
+  GHashTable *skip_list = data->skip_list;
+  gpointer value;
+
+  if (opt_owner_uid >= 0)
+    g_file_info_set_attribute_uint32 (file_info, "unix::uid", opt_owner_uid);
+  if (opt_owner_gid >= 0)
+    g_file_info_set_attribute_uint32 (file_info, "unix::gid", opt_owner_gid);
+
+  if (mode_adds && g_hash_table_lookup_extended (mode_adds, path, NULL, &value))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Malformed statoverride file (no space found)");
-      return FALSE;
+      guint current_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+      guint mode_add = GPOINTER_TO_UINT (value);
+      g_file_info_set_attribute_uint32 (file_info, "unix::mode",
+                                        current_mode | mode_add);
+      g_hash_table_remove (mode_adds, path);
     }
 
-  mode_add = (guint32)(gint32)g_ascii_strtod (line, NULL);
-  g_hash_table_insert (files, g_strdup (spc + 1),
-                       GUINT_TO_POINTER((gint32)mode_add));
-  return TRUE;
-}
+  if (skip_list && g_hash_table_contains (skip_list, path))
+    {
+      g_hash_table_remove (skip_list, path);
+      return OSTREE_REPO_COMMIT_FILTER_SKIP;
+    }
 
-static gboolean
-_handle_skiplist_line (const char  *line,
-                      void        *data,
-                      GError     **error)
-{
-  GHashTable *files = data;
-  g_hash_table_add (files, g_strdup (line));
-  return TRUE;
+  return OSTREE_REPO_COMMIT_FILTER_ALLOW;
 }
