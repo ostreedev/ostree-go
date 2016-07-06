@@ -4,6 +4,7 @@ import (
   "time"
   "errors"
   "strings"
+  "buffer"
 
   glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -68,11 +69,16 @@ func Commit(path string, opts CommitOptions) {
   cerr = (*C.GError)(gerr.Ptr())
   var metadata *GVariant
   var detachedMetadata *GVariant
-  var flags OstreeRepoCommitModifierFlags = 0
+  var flags C.OstreeRepoCommitModifierFlags = 0
   var modifier *C.OstreeRepoCommitModifier
   var modeAdds *glib.GHashTable
+  var skipList *glib.GHashTable
   var mtree *C.OstreeRepoMutableTree
   var root *glib.GFile
+  var skipCommit bool = false
+  var ret string = nil
+  var commitChecksum string
+  var stats C.OStreeRepoTransactionStats
 
   csubject := C.CString(options.Subject)
   cbody := C.CString(options.Body)
@@ -84,13 +90,19 @@ func Commit(path string, opts CommitOptions) {
   }
 
   // If the user provided a stat override file
-  if options.StatOverride != nil {
-    // DO STUFF
+  if options.StatOverrideFile != nil {
+    modeAdds = glib.ToGHashTable(unsafe.Pointer(C.g_hash_table_new_full(C.g_str_hash, C.g_str_equal, C.g_free, NULL)))
+    if err = parseFileByLine(options.StatOverrideFile, C._handle_statoverride_line, modeAdds, cancellable); err != nil {
+      goto out
+    }
   }
 
   // If the user provided a skilist file
-  if options.SkipList != nil {
-    // DO STUFF
+  if options.SkipListFile != nil {
+    skipList = glib.ToGHashTable(unsafe.Pointer(C.g_hash_table_new_full(C.g_str_hash, C.g_str_equal, C.g_free, NULL)))
+    if err = parseFileByLine(options.SkipListFile, C._handle_skiplist_line, skipList, cancellable); err != nil {
+      goto out
+    }
   }
 
   if options.AddMetadataString != nil {
@@ -121,7 +133,7 @@ func Commit(path string, opts CommitOptions) {
     C.ostree_repo_set_disabled_fsync (repo.native(), C.TRUE)
   }
 
-  if flags != 0 || options.OwnerUID >= 0 || options.OwnerGID >= 0 || options.StatOverride != nil || NoXattrs {
+  if flags != 0 || options.OwnerUID >= 0 || options.OwnerGID >= 0 || options.StatOverrideFile != nil || NoXattrs {
     // DO STUFF
   }
 
@@ -180,7 +192,53 @@ func Commit(path string, opts CommitOptions) {
     return glib.ConvertGError(glib.ToGError(cerr))
   }
 
-  return nil
+  if options.SkipIfUnchanged && options.Parent != nil {
+    var parentRoot *glib.GFile
+
+    cerr = nil
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), cparent, (*C.GFile)(parentRoot.Ptr()), NULL, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+      return glib.ConvertGError(glib.ToGError(cerr))
+    }
+
+    if glib.GoBool(glib.GBoolean(C.g_file_equal((*C.GFile)(root.Ptr()), (*C.GFile)(parentRoot.Ptr())))) {
+      skipCommit = true
+    }
+  }
+
+  if !skipCommit {
+    // TODO: ADD STUFF HERE
+  } else {
+    commitChecksum = parent
+  }
+
+  if options.TableOutput {
+    var buffer bytes.Buffer
+
+    buffer.WriteString("Commit: ")
+    buffer.WriteString(commitChecksum)
+    buffer.WriteString("\nMetadata Total: ")
+    buffer.WriteString(stats.metadata_objects_total)
+    buffer.WriteString("\nMetadata Written: ")
+    buffer.WriteString(stats.metadata_objects_written)
+    buffer.WriteString("\nContent Total: ")
+    buffer.WriteString(stats.content_objects_total)
+    buffer.WriteString("\nContent Written")
+    buffer.WriteString(stats.content_objects_written)
+    buffer.WriteString("\nContent Bytes Written: ")
+    buffer.WriteString(stats.content_bytes_written)
+    ret = buffer.String()
+  } else {
+    ret = commitChecksum
+  }
+
+  out:
+    if repo != repo{} { C.ostree_repo_abort_transaction(repo.native(), (*C.GCancellable)(cancellable.Ptr()), NULL) }
+    if modifier != nil { C.ostree_repo_commit_modifier_unref(modifier) }
+    if ret != "" {
+      return ret, nil
+    } else{
+      return nil, glib.ToGError((*C.GError)(unsafe.Pointer(cerr)))
+    }
 }
 
 func parseKeyValueStrings(strings []string, metadata *GVariant) error {
@@ -202,6 +260,10 @@ func parseKeyValueStrings(strings []string, metadata *GVariant) error {
   return nil
 }
 
+func parseFileByLine() error {
+  return nil
+}
+
 
 type CommitOptions struct {
   Subject                   string      // One line subject
@@ -217,8 +279,8 @@ type CommitOptions struct {
   LinkCheckoutSpeedup       bool        // Optimize for commits of trees composed of hardlinks in the repository
   TarAuotocreateParents     bool        // When loading tar archives, automatically create parent directories as needed
   SkipIfUnchanged           bool        // If the contents are unchanged from a previous commit, do nothing
-  StatOverride              string      // File containing list of modifications to make permissions
-  SkipList                  string      // File containing list of file paths to skip
+  StatOverrideFile          string      // File containing list of modifications to make permissions
+  SkipListFile              string      // File containing list of file paths to skip
   TableOutput               bool        // Output more information in a KEY: VALUE format
   GenerateSizes             bool        // Generate size information along with commit metadata
   GpgSign                   []string    // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
