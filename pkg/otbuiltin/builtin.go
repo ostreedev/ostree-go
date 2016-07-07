@@ -30,6 +30,13 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
   return r
 }
 
+func (r *Repo) isInitialized() bool {
+  if r.Ptr() != nil {
+    return true
+  }
+  return false
+}
+
 func openRepo(path string) (*Repo, err) {
   var cerr *C.GError = nil
 	cpath := C.CString(path)

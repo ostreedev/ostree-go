@@ -5,7 +5,7 @@ import (
   "errors"
   "strings"
   "strconv"
-  "buffer"
+  "bytes"
 
   glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -17,15 +17,50 @@ import (
 // #include "builtin.go.h"
 import "C"
 
-var options CommitOptions
+var options commitOptions
 
+type handleLineFunc func(string, *glib.GHashTable) error
+
+type commitOptions struct {
+  Subject                   string          // One line subject
+  Body                      string          // Full description
+  Parent                    string          // Parent of the commit
+  Branch                    string          // branch --> required unless Orphan is true`
+  Tree                      []string        // 'dir=PATH' or 'tar=TARFILE' or 'ref=COMMIT': overlay the given argument as a tree
+  AddMetadataString         []string        // Add a key/value pair to metadata
+  AddDetachedMetadataString []string        // Add a key/value pair to detached metadata
+  OwnerUID                  int             // Set file ownership to user id
+  OwnerGID                  int             // Set file ownership to group id
+  NoXattrs                  bool            // Do not import extended attributes
+  LinkCheckoutSpeedup       bool            // Optimize for commits of trees composed of hardlinks in the repository
+  TarAuotocreateParents     bool            // When loading tar archives, automatically create parent directories as needed
+  SkipIfUnchanged           bool            // If the contents are unchanged from a previous commit, do nothing
+  StatOverrideFile          string          // File containing list of modifications to make permissions
+  SkipListFile              string          // File containing list of file paths to skip
+  TableOutput               bool            // Output more information in a KEY: VALUE format
+  GenerateSizes             bool            // Generate size information along with commit metadata
+  GpgSign                   []string        // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
+  GpgHomedir                string          // GPG home directory to use when looking for keyrings (if you have GPGME - GNU Privacy Guard Made Easy)
+  Timestamp                 time.Time       // Override the timestamp of the commit
+  Orphan                    bool            // Commit does not belong to a branch
+  Fsync                     bool            // Specify whether fsync should be used or not.  Default to true
+}
+
+func NewCommitOptions() {
+  var co CommitOptions
+  co.OwnerUID = -1
+  co.OwnerGID = -1
+  co.Fsync = true
+  return co
+}
+/*
 // This works for now but don't expect the options to do much
 func OldCommit(path string, opts CommitOptions) error {
   // Parse the arguments
   if opts != nilOptions {
     options = opts
   }
-  /* CHECK TO MAKE SURE THE REPO IS WRITABLE */
+  /* CHECK TO MAKE SURE THE REPO IS WRITABLE
   // Prepare for the Commit
   repo, err := openRepo(path)
   if err != nil {
@@ -58,14 +93,14 @@ func OldCommit(path string, opts CommitOptions) error {
   }
   return nil
 }
-
-func Commit(path string, opts CommitOptions) {
+*/
+func Commit(repoPath, commitPath string, opts CommitOptions) error {
   if opts != (CommitOptioins{}) {
     options = opts
   }
 
-  repo := openRepo(path)
-  cpath := C.CString(path)
+  repo := openRepo(repo)
+  cpath := C.CString(commitPath)
   var gerr = glib.NewGError()
   cerr = (*C.GError)(gerr.Ptr())
   var metadata *GVariant = nil
@@ -74,28 +109,28 @@ func Commit(path string, opts CommitOptions) {
   var modifier *C.OstreeRepoCommitModifier
   var modeAdds *glib.GHashTable
   var skipList *glib.GHashTable
-  var mtree *C.OstreeRepoMutableTree
+  var mtree *C.OstreeMutableTree
   var root *glib.GFile
   var objectToCommit *glib.GFile
   var skipCommit bool = false
   var ret string = nil
   var commitChecksum string
-  var stats C.OStreeRepoTransactionStats
-  var filter_data C.CommitFilterData = { 0, }
+  var stats C.OstreeRepoTransactionStats
+  var filter_data C.CommitFilterData = nil
 
   csubject := C.CString(options.Subject)
   cbody := C.CString(options.Body)
   cbranch := C.CString(options.Branch)
   cparent := C.CString(options.Parent)
 
-  if !GoBool(GBoolean(C.ostree_ensure_repo_writable(repo.native(), cerr))) {
+  if !glib.GoBool(glib.GBoolean(C.ostree_ensure_repo_writable(repo.native(), cerr))) {
     return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
   }
 
   // If the user provided a stat override file
   if options.StatOverrideFile != nil {
     modeAdds = glib.ToGHashTable(unsafe.Pointer(C.g_hash_table_new_full(C.g_str_hash, C.g_str_equal, C.g_free, NULL)))
-    if err = parseFileByLine(options.StatOverrideFile, C._handle_statoverride_line, modeAdds, cancellable); err != nil {
+    if err = parseFileByLine(options.StatOverrideFile, handleStatOverrideLine, modeAdds, cancellable); err != nil {
       goto out
     }
   }
@@ -103,7 +138,7 @@ func Commit(path string, opts CommitOptions) {
   // If the user provided a skilist file
   if options.SkipListFile != nil {
     skipList = glib.ToGHashTable(unsafe.Pointer(C.g_hash_table_new_full(C.g_str_hash, C.g_str_equal, C.g_free, NULL)))
-    if err = parseFileByLine(options.SkipListFile, C._handle_skiplist_line, skipList, cancellable); err != nil {
+    if err = parseFileByLine(options.SkipListFile, handleSkipListline, skipList, cancellable); err != nil {
       goto out
     }
   }
@@ -149,23 +184,23 @@ func Commit(path string, opts CommitOptions) {
   } else if !options.Orphan {
     cerr = nil
     if !glib.GoBool(glib.GBoolean(ostree_repo_resolve_rev(repo.native(), cbranch, C.TRUE, &cparent, cerr))) {
-      return glib.ConvertGError(glib.ToGError(cerr))
+      goto out
     }
   }
 
   cerr = nil
   if !glib.GoBool(glib.GBoolean(ostree_repo_prepare_transaction(repo.native(), nil, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
-    return glib.ConvertGError(glib.ToGError(cerr))
+    goto out
   }
 
   cerr = nil
-  if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(ostree_repo_scan_hardlinks(repo.native(), (*C.GCancellable(cancellable.Ptr()), cerr)))) {
-    return glib.ConvertGError(glib.ToGError(cerr))
+  if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(ostree_repo_scan_hardlinks(repo.native(), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+    goto out
   }
 
   mtree := C.ostree_mutable_tree_new()
 
-  if len(path) == 0 && (len(options.Tree) == 0 || len(options.Tree[1]) == 0) {
+  if len(commitPath) == 0 && (len(options.Tree) == 0 || len(options.Tree[1]) == 0) {
     currentDir := C.g_get_current_dir()
     objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(currentDir)))
     C.g_free(currentDir)
@@ -218,33 +253,33 @@ func Commit(path string, opts CommitOptions) {
   }
 
   if modeAdds != nil && C.g_hash_table_size((*C.GHashTable)(modeAdds.Ptr())) > 0 {
-    C.GHashTableIter hashIter
+    var hashIter C.GHashTableIter
 
-    C.gpointer key
+    var key C.gpointer
 
     C.g_hash_table_iter_init(&hashIter, (*C.GHashTable)(modeAdds.Ptr()))
 
-    for C.g_hash_table_iter_next(hashIter, &key, &value) {
-      C.g_printerr("Unmatched StatOverride path: %s\n", (C.char*)(key))
+    for glib.GoBool(glib.GBoolean(C.g_hash_table_iter_next(hashIter, &key, &value))) {
+      C.g_printerr("Unmatched StatOverride path: %s\n", C._gptr_to_str(key))
     }
     return errors.New("Unmatched StatOverride paths")
   }
 
   if skipList != nil && C.g_hash_table_size((*C.GHashTable)(skipList.Ptr())) > 0 {
-    C.GHashTableIter hashIter
-    C.gpointer key
+    var hashIter C.GHashTableIter
+    var key C.gpointer
 
     C.g_hash_table_iter_init(&hashIter, (*C.GHashTable)(skipList.Ptr()))
 
-    for C.g_hash_table_iter_next(hashIter, &key, &value) {
-      C.g_printerr("Unmatched SkipList path: %s\n", (C.char*)(key))
+    for glib.GoBool(glib.GBoolean(C.g_hash_table_iter_next(hashIter, &key, &value))) {
+      C.g_printerr("Unmatched SkipList path: %s\n", C._gptr_to_str(key))
     }
     return errors.New("Unmatched SkipList paths")
   }
 
   cerr = nil
   if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_mtree(repo.native(), mtree, &(*C.GFile)(root.Ptr()), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
-    return glib.ConvertGError(glib.ToGError(cerr))
+    goto out
   }
 
   if options.SkipIfUnchanged && options.Parent != nil {
@@ -252,7 +287,7 @@ func Commit(path string, opts CommitOptions) {
 
     cerr = nil
     if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), cparent, (*C.GFile)(parentRoot.Ptr()), NULL, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
-      return glib.ConvertGError(glib.ToGError(cerr))
+      goto out
     }
 
     if glib.GoBool(glib.GBoolean(C.g_file_equal((*C.GFile)(root.Ptr()), (*C.GFile)(parentRoot.Ptr())))) {
@@ -261,11 +296,11 @@ func Commit(path string, opts CommitOptions) {
   }
 
   if !skipCommit {
-    var updateSummary C.GBoolean
+    var updateSummary C.gboolean
     var timestamp C.guint64
-    if options.Timestamp == time.Time{} {
+    if options.Timestamp.IsZero() {
       var now *C.GDateTime = g_date_time_new_now_utc()
-      timestamp C.g_date_time_to_unix(now)
+      timestamp = C.g_date_time_to_unix(now)
       C.g_date_time_unref(now)
 
       cerr = nil
@@ -294,7 +329,7 @@ func Commit(path string, opts CommitOptions) {
       C.ostree_repo_write_commit_detached_metadata(repo.native(), C.CString(commitChecksum), (*C.GVariant)(detachedMetadata.Ptr()), (*C.GCancellable)(cancellable.Ptr()), cerr)
     }
 
-    if options.GpgSign != nil {
+    if len(options.GpgSign) != 0 {
       for key := range options.GpgSign {
         cerr = nil
         if !glib.GoBool(glib.GBoolean(ostree_repo_sign_commit(repo.native(), C.CString(commitChecksum), C.CString(key), C.CString(options.GpgHomedir), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
@@ -357,14 +392,11 @@ func Commit(path string, opts CommitOptions) {
     ret = commitChecksum
   }
 
+  return ret
   out:
-    if repo != repo{} { C.ostree_repo_abort_transaction(repo.native(), (*C.GCancellable)(cancellable.Ptr()), NULL) }
+    if repo.isInitialized() { C.ostree_repo_abort_transaction(repo.native(), (*C.GCancellable)(cancellable.Ptr()), NULL) }
     if modifier != nil { C.ostree_repo_commit_modifier_unref(modifier) }
-    if ret != "" {
-      return ret, nil
-    } else{
-      return nil, glib.ToGError((*C.GError)(unsafe.Pointer(cerr)))
-    }
+    return nil, glib.ToGError((*C.GError)(unsafe.Pointer(cerr)))
 }
 
 func parseKeyValueStrings(strings []string, metadata *GVariant) error {
@@ -380,7 +412,7 @@ func parseKeyValueStrings(strings []string, metadata *GVariant) error {
     C.g_variant_builder_add(builder, "{sv}", C.CString(key), C.CString(value))
   }
 
-  metadata = ToGVariant(unsafe.Pointer(C.g_variant_buider_end(builder)))
+  metadata = ToGVariant(unsafe.Pointer(C.g_variant_builder_end(builder)))
   C.g_variant_ref_sink((C.GVariant)(metadata.Ptr()))
 
   return nil
@@ -415,7 +447,7 @@ func handleStatOverrideLine(line string, table *glib.GHashTable) error {
   var space int
   var modeAdd C.guint
 
-  if space = strings.IndexRune(line, ' '); space = -1 {
+  if space = strings.IndexRune(line, ' '); space == -1 {
     return errors.New("Malformed StatOverrideFile (no space found)")
   }
 
@@ -431,30 +463,30 @@ func handleSkipListline(line string, table *glib.GHashTable) error {
   return nil
 }
 
+// export commitFilter
+func commitFilter(self *C.OstreeRepo, path C.CString, fileInfo *C.GFileInfo, userData *C.CommitFilterData) C.OstreeRepoCommitFilterResult {
+  var modeAdds *C.GHashTable = userData.modeAdds
+  var skipList *C.GHashTable = userData.skipList
+  var value C.gpointer
 
-type handleLineFunc func(string, *glib.GHashTable) error
+  if options.OwnerUID >= 0 {
+    C.g_file_info_set_attribute_uint32(fileInfo, "unix::uid", options.OwnerUID)
+  }
+  if options.OwnerGID >= 0 {
+    C.g_file_info_set_attribute_uint32(fileInfo, "unix::gid", options.OwnerGID)
+  }
 
-type CommitOptions struct {
-  Subject                   string          // One line subject
-  Body                      string          // Full description
-  Parent                    string          // Parent of the commit
-  Branch                    string          // branch --> required unless Orphan is true`
-  Tree                      []string        // 'dir=PATH' or 'tar=TARFILE' or 'ref=COMMIT': overlay the given argument as a tree
-  AddMetadataString         []string        // Add a key/value pair to metadata
-  AddDetachedMetadataString []string        // Add a key/value pair to detached metadata
-  OwnerUID                  int = -1        // Set file ownership to user id
-  OwnerGID                  int = -1        // Set file ownership to group id
-  NoXattrs                  bool            // Do not import extended attributes
-  LinkCheckoutSpeedup       bool            // Optimize for commits of trees composed of hardlinks in the repository
-  TarAuotocreateParents     bool            // When loading tar archives, automatically create parent directories as needed
-  SkipIfUnchanged           bool            // If the contents are unchanged from a previous commit, do nothing
-  StatOverrideFile          string          // File containing list of modifications to make permissions
-  SkipListFile              string          // File containing list of file paths to skip
-  TableOutput               bool            // Output more information in a KEY: VALUE format
-  GenerateSizes             bool            // Generate size information along with commit metadata
-  GpgSign                   []string = nil  // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
-  GpgHomedir                string          // GPG home directory to use when looking for keyrings (if you have GPGME - GNU Privacy Guard Made Easy)
-  Timestamp                 time.Time       // Override the timestamp of the commit
-  Orphan                    bool            // Commit does not belong to a branch
-  Fsync                     bool = true     // Specify whether fsync should be used or not.  Default to true
+  if modeAdds != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_lookup_extended(modeAdds, path, nil, &value))) {
+    currentMode := C.g_file_info_get_attribute_uint32(fileInfo, "unix::mode")
+    modeAdd := C.GPOINTER_TO_UINT(value)
+    C.g_file_info_set_attribute_uint32(fileInfo, "unix::mode", currentMode | modeAdd)
+    C.g_hash_table_remove(modeAdds, path)
+  }
+
+  if skipList != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_contains(skipList, path))) {
+    C.g_hash_table_remove(skipList, path)
+    return C.OSTREE_REPO_COMMIT_FILTER_SKIP
+  }
+
+  return C.OSTREE_REPO_COMMIT_FILTER_ALLOW
 }

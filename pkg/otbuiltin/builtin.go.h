@@ -9,7 +9,7 @@ _ostree_repo_append_modifier_flags(OstreeRepoCommitModifierFlags *flags, int fla
 
 struct CommitFilterData {
   GHashTable *mode_adds;
-  GhashTable *skip_list;
+  GHashTable *skip_list;
 };
 
 static OstreeRepoCommitFilterResult
@@ -19,7 +19,8 @@ _commit_filter (OstreeRepo         *self,
                gpointer            user_data)
 {
   struct CommitFilterData *data = user_data;
-  GHashTable *mode_adds = data->mode_adds;
+  return commitFilter (self, path, file_info, data);
+  /*GHashTable *mode_adds = data->mode_adds;
   GHashTable *skip_list = data->skip_list;
   gpointer value;
 
@@ -44,4 +45,10 @@ _commit_filter (OstreeRepo         *self,
     }
 
   return OSTREE_REPO_COMMIT_FILTER_ALLOW;
+  */
 }
+
+static char* _gptr_to_str(gpointer p)
+  {
+    return (char*)p;
+  }
