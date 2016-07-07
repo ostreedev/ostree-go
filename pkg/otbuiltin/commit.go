@@ -76,6 +76,7 @@ func Commit(path string, opts CommitOptions) {
   var skipList *glib.GHashTable
   var mtree *C.OstreeRepoMutableTree
   var root *glib.GFile
+  var objectToCommit *glib.GFile
   var skipCommit bool = false
   var ret string = nil
   var commitChecksum string
@@ -163,7 +164,58 @@ func Commit(path string, opts CommitOptions) {
   }
 
   mtree := C.ostree_mutable_tree_new()
-  // BIG IF/ELSE IF/ELSE STATEMENT HERE
+
+  if len(path) == 0 && (len(options.Tree) == 0 || len(options.Tree[1]) == 0) {
+    currentDir := C.g_get_current_dir()
+    objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(currentDir)))
+    C.g_free(currentDir)
+
+    if !glib.GoBool(glib.GBoolean(ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+      goto out
+    }
+  } else if len(options.Tree) != 0 {
+    var eq int = -1
+    cerr = nil
+    for tree := range options.Tree {
+      eq = strings.Index(tree, "=")
+      if eq == -1 {
+        C.g_set_error(cerr, C.G_IO_ERROR, C.G_IO_ERROR_FAILED, "Missing type in tree specification %s", tree)
+        goto out
+      }
+      treeType := tree[:eq]
+      tree = tree[eq+1:]
+
+      C.g_clear_object((*C.GFile)(objectToCommit.Ptr()))
+      if strings.Compare(treeType, "dir") == 0 {
+        objectToCommit = glib.ToGFile(C.g_file_new_for_path(C.CString(tree)))
+        if !glib.GoBool(glib.GBoolean(ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+          goto out
+        }
+      } else if strings.Compare(treeType, "tar") == 0 {
+        objectToCommit = glib.ToGFile(C.g_file_new_for_path(C.CString(tree)))
+        if !glib.GoBool(glib.GBoolean(ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+          goto out
+        }
+      } else if strings.Compare(treeType, "ref") {
+        if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native, C.CString(tree), &(*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+          goto out
+        }
+
+        if !glib.GoBool(glib.GBoolean(ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+          goto out
+        }
+      } else {
+        C.g_set_error(cerr, C.G_IO_ERROR, C.G_IO_ERROR_FAILED, "Missing type in tree specification %s", tree)
+        goto out
+      }
+    }
+  } else {
+    objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(cpath)))
+    cerr = nil
+    if !glib.GoBool(glib.GBoolean(ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+      goto out
+    }
+  }
 
   if modeAdds != nil && C.g_hash_table_size((*C.GHashTable)(modeAdds.Ptr())) > 0 {
     C.GHashTableIter hashIter
