@@ -123,7 +123,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
   cbranch := C.CString(options.Branch)
   cparent := C.CString(options.Parent)
 
-  if !glib.GoBool(glib.GBoolean(C.ostree_ensure_repo_writable(repo.native(), cerr))) {
+  if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), cerr))) {
     return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
   }
 
@@ -168,7 +168,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
     C._ostree_repo_append_modifier_flags(&flags, C.OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
   }
   if !options.Fsync {
-    C.ostree_repo_set_disabled_fsync (repo.native(), C.TRUE)
+    C.ostree_repo_set_disable_fsync (repo.native(), C.TRUE)
   }
 
   if flags != 0 || options.OwnerUID >= 0 || options.OwnerGID >= 0 || options.StatOverrideFile != nil || NoXattrs {
@@ -305,22 +305,16 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
 
       cerr = nil
       if !glib.GoBool(glib.GBoolean(ostree_repo_write_commit(repo.native(), cparent, csubject, cbody,
-                     (*C.GVariant)(metadata.Ptr()), C.OSTREE_REPO_FILE((*C.GFile)(root.Ptr())), &C.CString(commitChecksum), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+                     (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file((*C.GFile)(root.Ptr())), &C.CString(commitChecksum), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
         goto out
       }
     } else {
-      var ts C.timespec
-      var timestampStr = strconv.FormatInt(options.Timestamp.Unix(), 10)
-      if !C.parse_datetime(&ts, timestampStr, nil) {
-        C.g_set_error(cerr, C.G_IO_ERROR, C.G_IO_ERROR_FAILED, "Could not parse %s", timestampStr)
-        goto out
-      }
-      timestamp =  ts.tv_sec
+      var timestamp = (C.guint64)(C.ulong)(options.Timestamp.Unix())
     }
 
     cerr = nil
     if !glib.GoBool(glib.GBoolean(ostree_repo_write_commit_with_time(repo.native(), cparent, csubject, cbody,
-                   (*C.GVariant)(metadata.Ptr()), C.OSTREE_REPO_FILE((*C.GFile)(root.Ptr())), timestamp, &C.CString(commitChecksum), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
+                   (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file((*C.GFile)(root.Ptr())), timestamp, &C.CString(commitChecksum), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
       goto out
     }
 
