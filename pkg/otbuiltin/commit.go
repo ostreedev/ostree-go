@@ -446,7 +446,7 @@ func handleStatOverrideLine(line string, table *glib.GHashTable) error {
   }
 
   modeAdd = (C.guint32)(C.gint32)(C.g_ascii_strtod(C.CString(line), nil))
-  C.g_hash_table_insert((*C.GHashTable)(table.Ptr()), C.g_strdup(C.CString(line[space+1:]), C.GUINT_TO_POINTER((gint32)(modeAdd))))
+  C.g_hash_table_insert((*C.GHashTable)(table.Ptr()), C.g_strdup(C.CString(line[space+1:]), C._guint_to_pointer((gint32)(modeAdd))))
 
   return nil
 }
@@ -472,7 +472,7 @@ func commitFilter(self *C.OstreeRepo, path C.CString, fileInfo *C.GFileInfo, use
 
   if modeAdds != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_lookup_extended(modeAdds, path, nil, &value))) {
     currentMode := C.g_file_info_get_attribute_uint32(fileInfo, "unix::mode")
-    modeAdd := C.GPOINTER_TO_UINT(value)
+    modeAdd := C._gpointer_to_uint(value)
     C.g_file_info_set_attribute_uint32(fileInfo, "unix::mode", currentMode | modeAdd)
     C.g_hash_table_remove(modeAdds, path)
   }
