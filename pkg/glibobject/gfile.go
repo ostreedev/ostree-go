@@ -42,7 +42,7 @@ import (
  }
 
  func NewGFile() *GFile {
-	 return GFile{nil}
+	 return &GFile{nil}
  }
 
  func ToGFile(ptr unsafe.Pointer) *GFile {
