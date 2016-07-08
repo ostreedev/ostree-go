@@ -37,7 +37,7 @@ func (r *Repo) isInitialized() bool {
   return false
 }
 
-func openRepo(path string) (*Repo, err) {
+func openRepo(path string) (*Repo, error) {
   var cerr *C.GError = nil
 	cpath := C.CString(path)
 	pathc := C.g_file_new_for_path(cpath);
@@ -46,7 +46,7 @@ func openRepo(path string) (*Repo, err) {
 	repo := repoFromNative(crepo);
 	r := glib.GoBool(glib.GBoolean(C.ostree_repo_open(repo.native(), nil, &cerr)))
 	if !r {
-		return nil, glibobject.ConvertGError(cerr)
+		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 	}
 	return repo, nil
 }

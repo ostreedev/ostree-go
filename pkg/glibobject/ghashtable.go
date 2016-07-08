@@ -45,6 +45,6 @@ func (ht *GHashTable) native() *C.GHashTable {
 	return (*C.GHashTable)(ht.ptr)
 }
 
-func ToGHashTable(ptr unsafe.Pointer) GHashTable {
-	return GHashTable{ptr}
+func ToGHashTable(ptr unsafe.Pointer) *GHashTable {
+	return &GHashTable{ptr}
 }

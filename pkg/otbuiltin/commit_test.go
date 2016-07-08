@@ -2,6 +2,8 @@ package otbuiltin
 
 import (
        "testing"
+       "os"
+       "fmt"
 )
 
 func TestCommitSuccess(t *testing.T) {
@@ -24,8 +26,10 @@ func TestCommitSuccess(t *testing.T) {
   //Test commit
   opts := NewCommitOptions()
   opts.Branch="test-branch"
-  err = Commit(testDir, ".", opts)
+  ret, err := Commit(testDir, ".", opts)
   if err != nil {
     t.Errorf("%s", err)
+  } else {
+    fmt.Println(ret)
   }
 }
