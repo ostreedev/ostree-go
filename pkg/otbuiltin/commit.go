@@ -214,7 +214,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
     for tree := range options.Tree {
       eq = strings.Index(tree, "=")
       if eq == -1 {
-        C.g_set_error(cerr, C.G_IO_ERROR, C.G_IO_ERROR_FAILED, "Missing type in tree specification %s", tree)
+        C._g_set_error_onearg(cerr, "Missing type in tree specification", tree)
         goto out
       }
       treeType := tree[:eq]
@@ -240,7 +240,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
           goto out
         }
       } else {
-        C.g_set_error(cerr, C.G_IO_ERROR, C.G_IO_ERROR_FAILED, "Missing type in tree specification %s", tree)
+        C._g_set_error_onearg(cerr, "Missing type in tree specification", tree)
         goto out
       }
     }
@@ -260,7 +260,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
     C.g_hash_table_iter_init(&hashIter, (*C.GHashTable)(modeAdds.Ptr()))
 
     for glib.GoBool(glib.GBoolean(C.g_hash_table_iter_next(hashIter, &key, &value))) {
-      C.g_printerr("Unmatched StatOverride path: %s\n", C._gptr_to_str(key))
+      C._g_printerr_onearg("Unmatched StatOverride path: ", C._gptr_to_str(key))
     }
     return errors.New("Unmatched StatOverride paths")
   }
@@ -272,7 +272,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
     C.g_hash_table_iter_init(&hashIter, (*C.GHashTable)(skipList.Ptr()))
 
     for glib.GoBool(glib.GBoolean(C.g_hash_table_iter_next(hashIter, &key, &value))) {
-      C.g_printerr("Unmatched SkipList path: %s\n", C._gptr_to_str(key))
+      C._g_printerr_onearg("Unmatched SkipList path: ", C._gptr_to_str(key))
     }
     return errors.New("Unmatched SkipList paths")
   }
@@ -403,7 +403,7 @@ func parseKeyValueStrings(strings []string, metadata *GVariant) error {
 
     key := iter[:index]
     value := iter[index+1:]
-    C.g_variant_builder_add(builder, "{sv}", C.CString(key), C.CString(value))
+    C._g_variant_builder_add_twoargs(builder, "{sv}", C.CString(key), C.CString(value))
   }
 
   metadata = ToGVariant(unsafe.Pointer(C.g_variant_builder_end(builder)))
@@ -413,7 +413,7 @@ func parseKeyValueStrings(strings []string, metadata *GVariant) error {
 }
 
 func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, cancellable *glib.GCancellable) error {
-  var contents C.CString
+  var contents *C.char
   var file *glib.GFile
   var lines []string
   var gerr = glib.NewGError()
@@ -455,32 +455,4 @@ func handleSkipListline(line string, table *glib.GHashTable) error {
   C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.g_strdup(C.CString(line)))
 
   return nil
-}
-
-// export commitFilter
-func commitFilter(self *C.OstreeRepo, path C.CString, fileInfo *C.GFileInfo, userData *C.CommitFilterData) C.OstreeRepoCommitFilterResult {
-  var modeAdds *C.GHashTable = userData.modeAdds
-  var skipList *C.GHashTable = userData.skipList
-  var value C.gpointer
-
-  if options.OwnerUID >= 0 {
-    C.g_file_info_set_attribute_uint32(fileInfo, "unix::uid", options.OwnerUID)
-  }
-  if options.OwnerGID >= 0 {
-    C.g_file_info_set_attribute_uint32(fileInfo, "unix::gid", options.OwnerGID)
-  }
-
-  if modeAdds != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_lookup_extended(modeAdds, path, nil, &value))) {
-    currentMode := C.g_file_info_get_attribute_uint32(fileInfo, "unix::mode")
-    modeAdd := C._gpointer_to_uint(value)
-    C.g_file_info_set_attribute_uint32(fileInfo, "unix::mode", currentMode | modeAdd)
-    C.g_hash_table_remove(modeAdds, path)
-  }
-
-  if skipList != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_contains(skipList, path))) {
-    C.g_hash_table_remove(skipList, path)
-    return C.OSTREE_REPO_COMMIT_FILTER_SKIP
-  }
-
-  return C.OSTREE_REPO_COMMIT_FILTER_ALLOW
 }
