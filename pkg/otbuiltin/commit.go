@@ -220,7 +220,7 @@ func Commit(repoPath, commitPath string, opts CommitOptions) error {
       treeType := tree[:eq]
       tree = tree[eq+1:]
 
-      C.g_clear_object((*C.GFile)(objectToCommit.Ptr()))
+      C._g_clear_object((*C.GFile)(objectToCommit.Ptr()))
       if strings.Compare(treeType, "dir") == 0 {
         objectToCommit = glib.ToGFile(C.g_file_new_for_path(C.CString(tree)))
         if !glib.GoBool(glib.GBoolean(ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), cerr))) {

@@ -79,6 +79,12 @@ _guint_to_pointer (guint u)
   return GUINT_TO_POINTER (u);
 }
 
+static void
+_g_clear_object (volatile GObject **object_ptr)
+{
+  g_clear_object(object_ptr);
+}
+
 
 // These functions are wrappers for variadic functions since CGO can't parse variadic functions
 static void
