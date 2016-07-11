@@ -25,8 +25,8 @@ func TestCommitSuccess(t *testing.T) {
 
   //Test commit
   opts := NewCommitOptions()
-  opts.Branch="test-branch"
-  ret, err := Commit(testDir, ".", opts)
+  branch := "test-branch"
+  ret, err := Commit(testDir, ".", branch, opts)
   if err != nil {
     t.Errorf("%s", err)
   } else {

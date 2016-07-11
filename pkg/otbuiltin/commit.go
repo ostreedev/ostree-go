@@ -26,7 +26,6 @@ type commitOptions struct {
   Subject                   string          // One line subject
   Body                      string          // Full description
   Parent                    string          // Parent of the commit
-  Branch                    string          // branch --> required unless Orphan is true`
   Tree                      []string        // 'dir=PATH' or 'tar=TARFILE' or 'ref=COMMIT': overlay the given argument as a tree
   AddMetadataString         []string        // Add a key/value pair to metadata
   AddDetachedMetadataString []string        // Add a key/value pair to detached metadata
@@ -55,48 +54,7 @@ func NewCommitOptions() commitOptions {
   return co
 }
 
-/*
-// This works for now but don't expect the options to do much
-func OldCommit(path string, opts CommitOptions) error {
-  // Parse the arguments
-  if opts != nilOptions {
-    options = opts
-  }
-  /* CHECK TO MAKE SURE THE REPO IS WRITABLE
-  // Prepare for the Commit
-  repo, err := openRepo(path)
-  if err != nil {
-    return err
-  }
-  // Start the transaction
-  cerr := (*C.GError)(gerr.Ptr())
-  prepared := glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(repo, C.FALSE, nil, &cerr)))
-  if !prepared {
-    return glib.ConvertGError(glib.GBoolean(unsafe.Pointer(cerr)))
-  }
-  // Create an #OstreeMutableTree
-  var mutableTree *C.OstreeMutableTree = nil
-  C.ostree_mutable_tree_init(mutableTree)
-  // Write metadata
-  cerr = nil
-  cpath := C.CString(path)
-  written := glib.GoBool(glib.GBoolean(ostree_repo_write_mtree(repo, &mutableTree,GFile **out_file C.g_file_new_for_path(cpath), nil, &cerr)))
-  if !written {
-    return glib.ConvertGError(glib.GBoolean(unsafe.Pointer(cerr)))
-  }
-  // Create a commit
-  cerr = nil
-  csubject := C.CString(options.Subject)
-  cbody := C.CString(options.Body)
-  var output *C.char = nil
-  committed := glib.GoBool(glib.GBoolean(ostree_repo_write_commit(repo, nil, csubject, cbody, nil, mutableTree, output, C.g_cancellable_new(), &cerr)))
-  if !committed {
-    return glib.ConvertGError(glib.GBoolean(unsafe.Pointer(cerr)))
-  }
-  return nil
-}
-*/
-func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
+func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, error) {
   options = opts
 
 
@@ -121,7 +79,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
   cpath := C.CString(commitPath)
   csubject := C.CString(options.Subject)
   cbody := C.CString(options.Body)
-  cbranch := C.CString(options.Branch)
+  cbranch := C.CString(branch)
   cparent := C.CString(options.Parent)
 
   // Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
@@ -172,7 +130,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
     }
   }
 
-  if strings.Compare(options.Branch, "") == 0 {
+  if strings.Compare(branch, "") == 0 {
     err = errors.New("A branch must be specified with --branch or use --orphan")
     goto out
   }
@@ -353,7 +311,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
         }
       }
 
-      if options.Branch != "" {
+      if branch != "" {
         C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, C.CString(commitChecksum))
       } else if !options.Orphan {
         err = errors.New("Error: commit must have a branch or be an orphan")
