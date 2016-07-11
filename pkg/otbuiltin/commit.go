@@ -102,8 +102,8 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
 
   var gerr = glib.NewGError()
   var cerr = (*C.GError)(gerr.Ptr())
-  var metadata *glib.GVariant = nil
-  var detachedMetadata *glib.GVariant = nil
+  var metadata *C.GVariant = nil
+  var detachedMetadata *C.GVariant = nil
   var flags C.OstreeRepoCommitModifierFlags = 0
   var modifier *C.OstreeRepoCommitModifier
   var modeAdds *glib.GHashTable
@@ -327,7 +327,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
 
       cerr = nil
       if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(crepo, cparent, csubject, cbody,
-                     (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr))) {
+                     metadata, C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr))) {
         goto out
       }
     } else {
@@ -336,13 +336,13 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
 
     cerr = nil
     if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(crepo, cparent, csubject, cbody,
-                   (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file(root), timestamp, &ccommitChecksum, cancellable, &cerr))) {
+                   metadata, C._ostree_repo_file(root), timestamp, &ccommitChecksum, cancellable, &cerr))) {
       goto out
     }
 
     if detachedMetadata != nil {
       cerr = nil
-      C.ostree_repo_write_commit_detached_metadata(crepo, ccommitChecksum, (*C.GVariant)(detachedMetadata.Ptr()), cancellable, &cerr)
+      C.ostree_repo_write_commit_detached_metadata(crepo, ccommitChecksum, detachedMetadata, cancellable, &cerr)
     }
 
     if len(options.GpgSign) != 0 {
@@ -419,7 +419,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
     return "", glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 }
 
-func parseKeyValueStrings(pairs []string, metadata *glib.GVariant) error {
+func parseKeyValueStrings(pairs []string, metadata *C.GVariant) error {
   builder := C.g_variant_builder_new(C._g_variant_type(C.CString("a{sv}")))
 
   for iter := range pairs {
@@ -436,8 +436,8 @@ func parseKeyValueStrings(pairs []string, metadata *glib.GVariant) error {
     C._g_variant_builder_add_twoargs(builder, (*C.gchar)(C.CString("{sv}")), C.CString(key), C.CString(value))
   }
 
-  metadata = glib.ToGVariant(unsafe.Pointer(C.g_variant_builder_end(builder)))
-  C.g_variant_ref_sink((*C.GVariant)(metadata.Ptr()))
+  metadata = C.g_variant_builder_end(builder)
+  C.g_variant_ref_sink(metadata)
 
   return nil
 }
