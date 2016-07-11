@@ -5,7 +5,7 @@
 #include <ostree.h>
 #include <string.h>
 #include <fcntl.h>
-#include "/home/rycole/Development/C-C++/ostree/src/libotutil/otutil.h"
+#include "../libotutil/otutil.h"
 
 static guint32 owner_uid;
 static guint32 owner_gid;
