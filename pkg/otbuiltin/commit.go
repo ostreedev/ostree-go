@@ -54,6 +54,7 @@ func NewCommitOptions() commitOptions {
   co.Fsync = true
   return co
 }
+
 /*
 // This works for now but don't expect the options to do much
 func OldCommit(path string, opts CommitOptions) error {
@@ -98,11 +99,7 @@ func OldCommit(path string, opts CommitOptions) error {
 func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
   options = opts
 
-  repo, err := openRepo(repoPath)
-  if err != nil {
-    goto out
-  }
-  cpath := C.CString(commitPath)
+
   var gerr = glib.NewGError()
   var cerr = (*C.GError)(gerr.Ptr())
   var metadata *glib.GVariant = nil
@@ -112,21 +109,36 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
   var modeAdds *glib.GHashTable
   var skipList *glib.GHashTable
   var mtree *C.OstreeMutableTree
-  var root *glib.GFile
+  var root *C.GFile
   var objectToCommit *glib.GFile
   var skipCommit bool = false
   var ret string
   var commitChecksum string
   var stats C.OstreeRepoTransactionStats
   var filter_data C.CommitFilterData
-  var cancellable *glib.GCancellable
+  var cancellable *C.GCancellable
 
+  cpath := C.CString(commitPath)
   csubject := C.CString(options.Subject)
   cbody := C.CString(options.Body)
   cbranch := C.CString(options.Branch)
   cparent := C.CString(options.Parent)
 
-  if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
+  // Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
+  _, err := openRepo(repoPath)
+  if err != nil {
+    return "", err
+  }
+  // Create a repo struct from the path
+  repoPathc := C.g_file_new_for_path(C.CString(repoPath))
+  defer C.g_object_unref(repoPathc)
+  crepo := C.ostree_repo_new(repoPathc)
+  if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, cancellable, &cerr))) {
+    goto out
+  }
+
+
+  if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(crepo, &cerr))) {
     goto out
   }
 
@@ -172,13 +184,15 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
     C._ostree_repo_append_modifier_flags(&flags, C.OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
   }
   if !options.Fsync {
-    C.ostree_repo_set_disable_fsync (repo.native(), C.TRUE)
+    C.ostree_repo_set_disable_fsync (crepo, C.TRUE)
   }
 
   if flags != 0 || options.OwnerUID >= 0 || options.OwnerGID >= 0 || strings.Compare(options.StatOverrideFile, "") != 0 || options.NoXattrs {
     filter_data.mode_adds = (*C.GHashTable)(modeAdds.Ptr())
     filter_data.skip_list = (*C.GHashTable)(skipList.Ptr())
-    modifier = C.ostree_repo_commit_modifier_new(flags, CommitFilter, &filter_data, nil)
+    C._set_owner_uid ((C.guint32)(options.OwnerUID))
+    C._set_owner_gid((C.guint32)(options.OwnerGID))
+    modifier = C._ostree_repo_commit_modifier_new_wrapper(flags, &filter_data, nil)
   }
 
   if strings.Compare(options.Parent, "") != 0 {
@@ -187,18 +201,18 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
     }
   } else if !options.Orphan {
     cerr = nil
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), cbranch, C.TRUE, &cparent, &cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(crepo, cbranch, C.TRUE, &cparent, &cerr))) {
       goto out
     }
   }
 
   cerr = nil
-  if !glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(repo.native(), nil, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+  if !glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(crepo, nil, cancellable, &cerr))) {
     goto out
   }
 
   cerr = nil
-  if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(C.ostree_repo_scan_hardlinks(repo.native(), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+  if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(C.ostree_repo_scan_hardlinks(crepo, cancellable, &cerr))) {
     goto out
   }
 
@@ -209,7 +223,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
     objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(currentDir)))
     C.g_free(currentDir)
 
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
       goto out
     }
   } else if len(options.Tree) != 0 {
@@ -227,20 +241,20 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
       C._g_clear_object((**C.GObject)(objectToCommit.Ptr()))
       if strings.Compare(treeType, "dir") == 0 {
         objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
-        if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+        if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
           goto out
         }
       } else if strings.Compare(treeType, "tar") == 0 {
         objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
-        if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+        if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
           goto out
         }
       } else if strings.Compare(treeType, "ref") == 0 {
-        if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), C.CString(treeVal), (**C.GFile)(objectToCommit.Ptr()), nil, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+        if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(crepo, C.CString(treeVal), (**C.GFile)(objectToCommit.Ptr()), nil, cancellable, &cerr))) {
           goto out
         }
 
-        if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+        if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
           goto out
         }
       } else {
@@ -251,7 +265,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
   } else {
     objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(cpath)))
     cerr = nil
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
       goto out
     }
   }
@@ -284,19 +298,19 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
   }
 
   cerr = nil
-  if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_mtree(repo.native(), mtree, (**C.GFile)(root.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+  if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_mtree(crepo, mtree, &root, cancellable, &cerr))) {
     goto out
   }
 
   if options.SkipIfUnchanged && strings.Compare(options.Parent, "") != 0 {
-    var parentRoot *glib.GFile
+    var parentRoot *C.GFile
 
     cerr = nil
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), cparent, (**C.GFile)(parentRoot.Ptr()), nil, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(crepo, cparent, &parentRoot, nil, cancellable, &cerr))) {
       goto out
     }
 
-    if glib.GoBool(glib.GBoolean(C.g_file_equal((*C.GFile)(root.Ptr()), (*C.GFile)(parentRoot.Ptr())))) {
+    if glib.GoBool(glib.GBoolean(C.g_file_equal(root, parentRoot))) {
       skipCommit = true
     }
   }
@@ -312,42 +326,42 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
       C.g_date_time_unref(now)
 
       cerr = nil
-      if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(repo.native(), cparent, csubject, cbody,
-                     (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file((*C.GFile)(root.Ptr())), &ccommitChecksum, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+      if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(crepo, cparent, csubject, cbody,
+                     (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr))) {
         goto out
       }
     } else {
-      var timestamp = (C.guint64)(options.Timestamp.Unix())
+      timestamp = (C.guint64)(options.Timestamp.Unix())
     }
 
     cerr = nil
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(repo.native(), cparent, csubject, cbody,
-                   (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file((*C.GFile)(root.Ptr())), timestamp, &ccommitChecksum, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(crepo, cparent, csubject, cbody,
+                   (*C.GVariant)(metadata.Ptr()), C._ostree_repo_file(root), timestamp, &ccommitChecksum, cancellable, &cerr))) {
       goto out
     }
 
     if detachedMetadata != nil {
       cerr = nil
-      C.ostree_repo_write_commit_detached_metadata(repo.native(), ccommitChecksum, (*C.GVariant)(detachedMetadata.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &cerr)
+      C.ostree_repo_write_commit_detached_metadata(crepo, ccommitChecksum, (*C.GVariant)(detachedMetadata.Ptr()), cancellable, &cerr)
     }
 
     if len(options.GpgSign) != 0 {
       for key := range options.GpgSign {
         cerr = nil
-        if !glib.GoBool(glib.GBoolean(C.ostree_repo_sign_commit(repo.native(), (*C.gchar)(ccommitChecksum), (*C.gchar)(C.CString(options.GpgSign[key])), (*C.gchar)(C.CString(options.GpgHomedir)), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+        if !glib.GoBool(glib.GBoolean(C.ostree_repo_sign_commit(crepo, (*C.gchar)(ccommitChecksum), (*C.gchar)(C.CString(options.GpgSign[key])), (*C.gchar)(C.CString(options.GpgHomedir)), cancellable, &cerr))) {
           goto out
         }
       }
 
       if options.Branch != "" {
-        C.ostree_repo_transaction_set_ref(repo.native(), nil, cbranch, C.CString(commitChecksum))
+        C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, C.CString(commitChecksum))
       } else if !options.Orphan {
         err = errors.New("Error: commit must have a branch or be an orphan")
         goto out
       }
 
       cerr = nil
-      if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(repo.native(), &stats, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+      if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(crepo, &stats, cancellable, &cerr))) {
         goto out
       }
 
@@ -367,7 +381,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
       */
 
       cerr = nil
-      if glib.GoBool(glib.GBoolean(updateSummary)) &&  !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(repo.native(), nil, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
+      if glib.GoBool(glib.GBoolean(updateSummary)) &&  !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(crepo, nil, cancellable, &cerr))) {
         goto out
       }
     }
@@ -397,7 +411,7 @@ func Commit(repoPath, commitPath string, opts commitOptions) (string, error) {
 
   return ret, nil
   out:
-    if repo.isInitialized() { C.ostree_repo_abort_transaction(repo.native(), (*C.GCancellable)(cancellable.Ptr()), nil) }
+    if crepo != nil { C.ostree_repo_abort_transaction(crepo, cancellable, nil) }
     if modifier != nil { C.ostree_repo_commit_modifier_unref(modifier) }
     if err != nil{
       return "", err
@@ -428,7 +442,7 @@ func parseKeyValueStrings(pairs []string, metadata *glib.GVariant) error {
   return nil
 }
 
-func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, cancellable *glib.GCancellable) error {
+func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, cancellable *C.GCancellable) error {
   var contents *C.char
   var file *glib.GFile
   var lines []string
@@ -436,7 +450,7 @@ func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, can
   cerr := (*C.GError)(gerr.Ptr())
 
   file = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(path))))
-  if !glib.GoBool(glib.GBoolean(C.g_file_load_contents((*C.GFile)(file.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &contents, nil, nil, &cerr))) {
+  if !glib.GoBool(glib.GBoolean(C.g_file_load_contents((*C.GFile)(file.Ptr()), cancellable, &contents, nil, nil, &cerr))) {
     return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
   }
 
@@ -468,27 +482,27 @@ func handleStatOverrideLine(line string, table *glib.GHashTable) error {
 }
 
 func handleSkipListline(line string, table *glib.GHashTable) error {
-  C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.g_strdup(C.CString(line)))
+  C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.g_strdup((*C.gchar)(C.CString(line))))
 
   return nil
 }
 
-//export CommitFilter
-func CommitFilter(self *C.OstreeRepo, path *C.char, fileInfo *C.GFileInfo, userData *C.CommitFilterData) C.OstreeRepoCommitFilterResult {
+/* func CommitFilter(self *C.OstreeRepo, path *C.char, fileInfo *C.GFileInfo, userData *C.CommitFilterData) C.OstreeRepoCommitFilterResult {
   var modeAdds *C.GHashTable
   var skipList *C.GHashTable
+  var value C.gpointer
 
   if options.OwnerUID >= 0 {
-    C.g_file_info_set_attribute_uint32(fileInfo, "unix::uid", options.OwnerUID)
+    C.g_file_info_set_attribute_uint32(fileInfo, C.CString("unix::uid"), (C.guint32)(options.OwnerUID))
   }
   if options.OwnerGID >= 0 {
-    C.g_file_info_set_attribute_uint32(fileInfo, "unix::gid", options.OwnerGID)
+    C.g_file_info_set_attribute_uint32(fileInfo, C.CString("unix::gid"), (C.guint32)(options.OwnerGID))
   }
 
-  if modeAdds != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_lookup_extended(skipList, path))) {
-    currentMode := C.g_file_info_get_attribute_uint32(fileInfo,  "unix::mode")
+  if modeAdds != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_lookup_extended(modeAdds, path, nil, &value))) {
+    currentMode := C.g_file_info_get_attribute_uint32(fileInfo,  C.CString("unix::mode"))
     modeAdd := C._gpointer_to_uint(value)
-    C.g_file_info_set_attribute_uint32(fileInfo, "unix::mode", currentMode |  modeAdd)
+    C.g_file_info_set_attribute_uint32(fileInfo, C.CString("unix::mode"), C._binary_or(currentMode, (C.guint32)(modeAdd)))
     C.g_hash_table_remove(modeAdds, path)
   }
 
@@ -498,4 +512,4 @@ func CommitFilter(self *C.OstreeRepo, path *C.char, fileInfo *C.GFileInfo, userD
   }
 
   return C.OSTREE_REPO_COMMIT_FILTER_ALLOW
-}
+} */

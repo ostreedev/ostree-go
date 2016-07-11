@@ -44,7 +44,7 @@ func openRepo(path string) (*Repo, error) {
 	defer C.g_object_unref(C.gpointer(pathc))
 	crepo := C.ostree_repo_new(pathc)
 	repo := repoFromNative(crepo);
-	r := glib.GoBool(glib.GBoolean(C.ostree_repo_open(repo.native(), nil, &cerr)))
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, nil, &cerr)))
 	if !r {
 		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 	}
