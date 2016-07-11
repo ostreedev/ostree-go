@@ -41,13 +41,13 @@ import (
    return fi.ptr
  }
 
- func NewGFileInfo() *GFileInfo {
-	 var fi GFileInfo{nil}
+ func NewGFileInfo() GFileInfo {
+	 var fi GFileInfo = GFileInfo{nil}
 	 return fi
  }
 
  func ToGFileInfo(p unsafe.Pointer) *GFileInfo {
-	 fi := NewGFileInfo()
+	 var fi *GFileInfo = &GFileInfo{}
 	 fi.ptr = p
 	 return fi
  }

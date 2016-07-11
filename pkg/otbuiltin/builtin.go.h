@@ -4,6 +4,8 @@
 #include <glib.h>
 #include <ostree.h>
 #include <string.h>
+#include <fcntl.h>
+#include "/home/rycole/Development/C-C++/ostree/src/libotutil/otutil.h"
 
 static guint32 owner_uid;
 static guint32 owner_gid;
@@ -54,6 +56,24 @@ static const GVariantType*
 _g_variant_type (char *type)
 {
   return G_VARIANT_TYPE (type);
+}
+
+static int
+_at_fdcwd ()
+{
+  return AT_FDCWD;
+}
+
+static char*
+_ostree_gio_fast_queryinfo ()
+{
+  return OSTREE_GIO_FAST_QUERYINFO;
+}
+
+static GFileQueryInfoFlags
+_g_file_query_info_nofollow_symlinks ()
+{
+  return G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS;
 }
 
 

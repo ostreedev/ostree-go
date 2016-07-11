@@ -18,7 +18,7 @@ import "C"
 
 var options CheckoutOptions
 
-type CheckoutOptions struct {
+type checkoutOptions struct {
   UserMode        bool    // Do not change file ownership or initialize extended attributes
   DisableCache    bool    // Do not update or use the internal repository uncompressed object
   Union           bool    // Keep existing directories and unchanged files, overwriting existing filesystem
@@ -30,13 +30,17 @@ type CheckoutOptions struct {
   overwriteMode   int
 }
 
-func Checkout(repoPath, destination, commit string, opts CheckoutOptions) error {
+func NewCheckoutOptions() checkoutOptions {
+  return checkoutOptions{}
+}
+
+func Checkout(repoPath, destination, commit string, opts checkoutOptions) error {
   if options != (CheckoutOptions{}) {
     options = opts
   }
 
   repo := openRepo(repoPath);
-  ccommit := C.Cstring(commit)
+  ccommit := C.CString(commit)
   cdest := C.CString(destination)
   var gerr = glib.NewGError()
   cerr := (*C.GError)(gerr.Ptr())
@@ -67,7 +71,7 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
   cerr := (*C.GError)(gerr.Ptr())
 
   if options.DisableCache {
-    C.OstreeRepoCheckoutOptions options = nil;
+    var options C.OstreeRepoCheckoutOptions
 
     if options.UserMode {
       options.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
@@ -77,7 +81,7 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
     }
 
 
-    checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree_at(repo, options, C.AT_FWCWD, cdest, ccommit, nil, cerr)))
+    checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree_at(repo, options, C._at_fdcwd(), cdest, ccommit, nil, cerr)))
     if !checkedOut {
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
@@ -91,30 +95,30 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
     var c dest = C.CString(destination)
     var destinationFile = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(cdest)))
 
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), ccommit, &(*C.GFile)(root.Ptr()), NULL, (*C.gcancellable)cancellable.Ptr(), cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), ccommit, &(*C.GFile)(root.Ptr()), nil, (*C.GCancellable)(cancellable.Ptr()), cerr))) {
       return glib.ToGError(unsafe.Pointer(cerr))
     }
 
     if options.Subpath {
-      subtree = glib.ToGFile(C.g_file_resolve_relative_path((C.GFile)root.Ptr(), csubpath))
+      subtree = glib.ToGFile(C.g_file_resolve_relative_path((C.GFile)(root.Ptr()), csubpath))
     } else {
       subtree = glib.ToGFile(C.g_object_ref(root))
     }
 
     cerr = nil
-    fileInfo = glib.ToGFileInfo(C.g_file_query_info((*C.GFile)subtree.Ptr(), C.OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, (*C.gcancellable)cancellable.Ptr(), cerr)
+    fileInfo = glib.ToGFileInfo(C.g_file_query_info((*C.GFile)(subtree.Ptr()), C._ostree_gio_fast_queryinfo, C._g_file_query_info_nofollow_symlinks, (*C.GCancellable)(cancellable.Ptr()), cerr))
 
     if !fileInfo {
-      if options.AllowNoent && glib.Gobool(glib.GBoolean(C.g_error_matches((*C.GError)tmpErr.Ptr(), C.G_IO_ERROR, C.G_IO_ERROR_NOT_FOUND))) {
-        C.g_error_clear((**C.GError)(tmpError.Ptr()))
+      if options.AllowNoent && glib.Gobool(glib.GBoolean(C.g_error_matches((*C.GError)(tmpErr.Ptr()), C.G_IO_ERROR, C.G_IO_ERROR_NOT_FOUND))) {
+        C.g_clear_error((**C.GError)(tmpError.Ptr()))
       } else {
         C.g_propagate_error(cerr, (**C.GError)(tmpError.Ptr()))
         return glib.ToGError(unsafe.Pointer(cerr))
       }
     }
 
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree(repo.native(), checkUserMode(), checkUnion(), cdest, C.OSTREE_REPO_FILE (*C.GFile)(subtree.Ptr()),
-                                  fileInfo, (*C.GFileInfo)(fileInfo.Ptr()), (*C.gcancellable)(cancellable.Ptr()), cerr))) {
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree(repo.native(), checkUserMode(), checkUnion(), cdest, C._ostree_repo_file(*C.GFile)(subtree.Ptr()),
+                                  fileInfo, (*C.GFileInfo)(fileInfo.Ptr()), (*C.GCancellable)(cancellable.Ptr()), cerr))) {
       return glib.ToGError(unsafe.Pointer(cerr))
     }
   }

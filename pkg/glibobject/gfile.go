@@ -49,11 +49,4 @@ import (
    gf := NewGFile()
    gf.ptr = ptr
    return gf
-	 return GFile{nil}
- }
-
- func ToGFile(ptr unsafe.Pointer) *GFile {
-   gf := NewGFile()
-   gf.ptr = ptr
-   return gf
  }
