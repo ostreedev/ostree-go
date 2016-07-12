@@ -6,18 +6,11 @@ import (
        glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
 
-// #cgo pkg-config: ostree-1 libgsystem
+// #cgo pkg-config: ostree-1
 // #include <stdlib.h>
 // #include <glib.h>
 // #include <ostree.h>
 // #include "builtin.go.h"
-/*
-static char*
-_ostree_gio_fast_queryinfo ()
-{
-  return OSTREE_GIO_FAST_QUERYINFO;
-}
-*/
 import "C"
 
 type Repo struct {
