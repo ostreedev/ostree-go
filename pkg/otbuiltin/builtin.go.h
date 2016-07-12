@@ -63,11 +63,6 @@ _at_fdcwd ()
   return AT_FDCWD;
 }
 
-static GFileQueryInfoFlags
-_g_file_query_info_nofollow_symlinks ()
-{
-  return G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS;
-}
 
 
 // These functions are wrappers for variadic functions since CGO can't parse variadic functions

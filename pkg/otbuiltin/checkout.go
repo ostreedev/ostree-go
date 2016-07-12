@@ -92,13 +92,3 @@ func processOneCheckout(repo *Repo, resolved_commit, subpath, destination string
 func processManyCheckouts(repo *Repo, target string, cancellable *glib.GCancellable) error {
   return nil
 }
-
-func checkUserMode() int {
-  if checkoutOpts.UserMode { return C.OSTREE_REPO_CHECKOUT_MODE_USER }
-  return 0
-}
-
-func checkUnion() int {
-  if checkoutOpts.Union { return C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES }
-  return 0
-}
