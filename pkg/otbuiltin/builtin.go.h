@@ -5,7 +5,7 @@
 #include <ostree.h>
 #include <string.h>
 #include <fcntl.h>
-#include "../libotutil/otutil.h"
+#include "../libotutil/otutil.h" // To be used temporarily util the library can be transferred to Golang
 
 static guint32 owner_uid;
 static guint32 owner_gid;
