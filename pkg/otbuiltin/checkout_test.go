@@ -2,6 +2,8 @@ package otbuiltin
 
 import (
        "testing"
+       "os"
+       "fmt"
 )
 
 func TestCheckoutSuccessProcessOne(t *testing.T) {
@@ -22,16 +24,16 @@ func TestCheckoutSuccessProcessOne(t *testing.T) {
   }
 
   //Commit to the repo
-  opts := NewCommitOptions()
+  commitOpts := NewCommitOptions()
   branch := "test-branch"
-  ret, err = Commit(testDir, ".", branch, opts)
+  ret, err := Commit(testDir, ".", branch, commitOpts)
   if err != nil {
     t.Errorf("%s", err)
   } else {
     fmt.Println(ret)
   }
 
-  opts := NewCheckoutOptions()
+  checkoutOpts := NewCheckoutOptions()
   checkoutDir := "/tmp/checkout"
   err = os.Mkdir(checkoutDir, 0777)
   if err != nil {
@@ -39,7 +41,7 @@ func TestCheckoutSuccessProcessOne(t *testing.T) {
     return
   }
 
-  err = Checkout(testDir, checkoutDir, branch, opts)
+  err = Checkout(testDir, checkoutDir, branch, checkoutOpts)
   if err != nil {
     t.Errorf("%s", err)
     return

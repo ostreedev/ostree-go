@@ -1,10 +1,9 @@
 package otbuiltin
 
 import (
-       "errors"
+       "unsafe"
        "strings"
        "fmt"
-       "unsafe"
 
        glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -16,7 +15,7 @@ import (
 // #include "builtin.go.h"
 import "C"
 
-var options CheckoutOptions
+var checkoutOpts checkoutOptions
 
 type checkoutOptions struct {
   UserMode        bool    // Do not change file ownership or initialize extended attributes
@@ -34,28 +33,32 @@ func NewCheckoutOptions() checkoutOptions {
 }
 
 func Checkout(repoPath, destination, commit string, opts checkoutOptions) error {
-  if options != (CheckoutOptions{}) {
-    options = opts
+  checkoutOpts = opts
+
+  repo, err := openRepo(repoPath);
+  if err != nil {
+    fmt.Println("error opening repo")
+    return err
   }
 
-  repo := openRepo(repoPath);
+  var cancellable *glib.GCancellable
   ccommit := C.CString(commit)
-  cdest := C.CString(destination)
   var gerr = glib.NewGError()
   cerr := (*C.GError)(gerr.Ptr())
 
-  if options.FromFile {
-    err := processManyCheckouts(repo, destination, (C.GCancellable)(cancellable.Ptr()))
+  if strings.Compare(checkoutOpts.FromFile, "") != 0 {
+    err := processManyCheckouts(repo, destination, cancellable)
     if err != nil {
       return err
     }
   } else {
     var resolvedCommit string
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo, ccommit, FALSE, &C.CString(resolvedCommit), cerr))) {
+    cresolvedCommit := C.CString(resolvedCommit)
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), ccommit, C.FALSE, &cresolvedCommit, &cerr))) {
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
 
-    err := processOneCheckout(repo, resolvedCommit, options.Subpath, destination, (C.GCancellable)(cancellable.Ptr()))
+    err := processOneCheckout(repo, resolvedCommit, checkoutOpts.Subpath, destination, cancellable)
     if err != nil {
       return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
     }
@@ -63,22 +66,22 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
   return nil
 }
 
-func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination string, cancellable glib.GCancellable) error {
+func processOneCheckout(repo *Repo, resolved_commit, subpath, destination string, cancellable *glib.GCancellable) error {
   cdest := C.CString(destination)
   ccommit := C.CString(resolved_commit)
   var gerr = glib.NewGError()
   cerr := (*C.GError)(gerr.Ptr())
-  var options C.OstreeRepoCheckoutOptions
+  var repoCheckoutOptions C.OstreeRepoCheckoutOptions
 
-  if options.UserMode {
-    options.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
+  if checkoutOpts.UserMode {
+    checkoutOpts.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
   }
-  if options.Union {
-    options.overwriteMode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+  if checkoutOpts.Union {
+    checkoutOpts.overwriteMode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
   }
 
 
-  checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree_at(repo, options, C._at_fdcwd(), cdest, ccommit, nil, cerr)))
+  checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree_at(repo.native(), &repoCheckoutOptions, C._at_fdcwd(), cdest, ccommit, nil, &cerr)))
   if !checkedOut {
     return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
   }
@@ -86,16 +89,16 @@ func processOneCheckout(OstreeRepo *repo, resolved_commit, subpath, destination 
   return nil
 }
 
-func processManyCheckouts(OstreeRepo *repo, target string, cancellable glib.GCancellable) error {
+func processManyCheckouts(repo *Repo, target string, cancellable *glib.GCancellable) error {
   return nil
 }
 
 func checkUserMode() int {
-  if options.UserMode { return C.OSTREE_REPO_CHECKOUT_MODE_USER }
+  if checkoutOpts.UserMode { return C.OSTREE_REPO_CHECKOUT_MODE_USER }
   return 0
 }
 
 func checkUnion() int {
-  if options.Union { return C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES }
+  if checkoutOpts.Union { return C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES }
   return 0
 }
