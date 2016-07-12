@@ -64,12 +64,6 @@ _at_fdcwd ()
   return AT_FDCWD;
 }
 
-static char*
-_ostree_gio_fast_queryinfo ()
-{
-  return OSTREE_GIO_FAST_QUERYINFO;
-}
-
 static GFileQueryInfoFlags
 _g_file_query_info_nofollow_symlinks ()
 {
