@@ -4,6 +4,7 @@ import (
        "testing"
        "os"
        "fmt"
+       //"time"
 )
 
 func TestCommitSuccess(t *testing.T) {
@@ -26,10 +27,14 @@ func TestCommitSuccess(t *testing.T) {
   //Test commit
   opts := NewCommitOptions()
   branch := "test-branch"
-  ret, err := Commit(testDir, ".", branch, opts)
+  ret, err := Commit(testDir, "/home/rycole/Development/C-C++/ostree/", branch, opts)
   if err != nil {
     t.Errorf("%s", err)
   } else {
     fmt.Println(ret)
   }
+
+  /*fmt.Println("sleeping...")
+  d, _ := time.ParseDuration("30s")
+  time.Sleep(d)*/
 }

@@ -7,6 +7,7 @@ import (
   "strconv"
   "bytes"
   "unsafe"
+  "fmt"
 
   glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -130,8 +131,8 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
     }
   }
 
-  if strings.Compare(branch, "") == 0 {
-    err = errors.New("A branch must be specified with --branch or use --orphan")
+  if strings.Compare(branch, "") == 0 && !options.Orphan {
+    err = errors.New("A branch must be specified or use commitOptions.Orphan")
     goto out
   }
 
@@ -290,58 +291,57 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
       }
     } else {
       timestamp = (C.guint64)(options.Timestamp.Unix())
-    }
 
-    cerr = nil
-    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(crepo, cparent, csubject, cbody,
-                   metadata, C._ostree_repo_file(root), timestamp, &ccommitChecksum, cancellable, &cerr))) {
-      goto out
+      if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(crepo, cparent, csubject, cbody,
+                     metadata, C._ostree_repo_file(root), timestamp, &ccommitChecksum, cancellable, &cerr))) {
+        goto out
+      }
     }
 
     if detachedMetadata != nil {
-      cerr = nil
       C.ostree_repo_write_commit_detached_metadata(crepo, ccommitChecksum, detachedMetadata, cancellable, &cerr)
     }
 
     if len(options.GpgSign) != 0 {
       for key := range options.GpgSign {
-        cerr = nil
         if !glib.GoBool(glib.GBoolean(C.ostree_repo_sign_commit(crepo, (*C.gchar)(ccommitChecksum), (*C.gchar)(C.CString(options.GpgSign[key])), (*C.gchar)(C.CString(options.GpgHomedir)), cancellable, &cerr))) {
           goto out
         }
       }
+    }
 
-      if branch != "" {
-        C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, C.CString(commitChecksum))
-      } else if !options.Orphan {
-        err = errors.New("Error: commit must have a branch or be an orphan")
-        goto out
-      }
+    if strings.Compare(branch, "") != 0 {
+      C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, C.CString(commitChecksum))
+    } else if !options.Orphan {
+      goto out
+    } else {
 
-      cerr = nil
-      if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(crepo, &stats, cancellable, &cerr))) {
-        goto out
-      }
+    }
 
-      /* The default for this option is FALSE, even for archive-z2 repos,
-       * because ostree supports multiple processes committing to the same
-       * repo (but different refs) concurrently, and in fact gnome-continuous
-       * actually does this.  In that context it's best to update the summary
-       * explicitly instead of automatically here. */
-      /*
-      TODO: I think this function is declared outside of libostree so I have to hunt it down
-      This is the C code:
+    cerr = nil
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(crepo, &stats, cancellable, &cerr))) {
+      goto out
+    }
+    fmt.Println("committed transaction")
 
-      if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
-                                                "commit-update-summary", FALSE,
-                                                &update_summary, error))
-        goto out;
-      */
+    /* The default for this option is FALSE, even for archive-z2 repos,
+     * because ostree supports multiple processes committing to the same
+     * repo (but different refs) concurrently, and in fact gnome-continuous
+     * actually does this.  In that context it's best to update the summary
+     * explicitly instead of automatically here. */
+    /*
+    TODO: I think this function is declared outside of libostree so I have to hunt it down
+    This is the C code:
 
-      cerr = nil
-      if glib.GoBool(glib.GBoolean(updateSummary)) &&  !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(crepo, nil, cancellable, &cerr))) {
-        goto out
-      }
+    if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
+                                              "commit-update-summary", FALSE,
+                                              &update_summary, error))
+      goto out;
+    */
+
+    cerr = nil
+    if glib.GoBool(glib.GBoolean(updateSummary)) &&  !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(crepo, nil, cancellable, &cerr))) {
+      goto out
     }
   } else {
     commitChecksum = options.Parent
@@ -444,30 +444,3 @@ func handleSkipListline(line string, table *glib.GHashTable) error {
 
   return nil
 }
-
-/* func CommitFilter(self *C.OstreeRepo, path *C.char, fileInfo *C.GFileInfo, userData *C.CommitFilterData) C.OstreeRepoCommitFilterResult {
-  var modeAdds *C.GHashTable
-  var skipList *C.GHashTable
-  var value C.gpointer
-
-  if options.OwnerUID >= 0 {
-    C.g_file_info_set_attribute_uint32(fileInfo, C.CString("unix::uid"), (C.guint32)(options.OwnerUID))
-  }
-  if options.OwnerGID >= 0 {
-    C.g_file_info_set_attribute_uint32(fileInfo, C.CString("unix::gid"), (C.guint32)(options.OwnerGID))
-  }
-
-  if modeAdds != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_lookup_extended(modeAdds, path, nil, &value))) {
-    currentMode := C.g_file_info_get_attribute_uint32(fileInfo,  C.CString("unix::mode"))
-    modeAdd := C._gpointer_to_uint(value)
-    C.g_file_info_set_attribute_uint32(fileInfo, C.CString("unix::mode"), C._binary_or(currentMode, (C.guint32)(modeAdd)))
-    C.g_hash_table_remove(modeAdds, path)
-  }
-
-  if skipList != nil && glib.GoBool(glib.GBoolean(C.g_hash_table_contains(skipList, path))) {
-    C.g_hash_table_remove(skipList, path)
-    return C.OSTREE_REPO_COMMIT_FILTER_SKIP
-  }
-
-  return C.OSTREE_REPO_COMMIT_FILTER_ALLOW
-} */
