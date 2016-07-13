@@ -4,7 +4,7 @@ import (
        "testing"
         "os"
         "fmt"
-        "time"
+        //"time"
 )
 
 func TestCheckoutSuccessProcessOneBranch(t *testing.T) {
@@ -36,17 +36,17 @@ func TestCheckoutSuccessProcessOneBranch(t *testing.T) {
 
   checkoutOpts := NewCheckoutOptions()
   checkoutDir := "/tmp/checkout"
-  err = os.Mkdir(checkoutDir, 0777)
   if err != nil {
     t.Errorf("%s", err)
     return
   }
+  // The directory will be created when the Checkout is made
   defer os.RemoveAll(checkoutDir)
 
-  fmt.Println("This is your opportunity to do a quick checkout yourself")
+  /*fmt.Println("This is your opportunity to do a quick checkout yourself")
   d, _ := time.ParseDuration("30s")
   time.Sleep(d)
-
+*/
   err = Checkout(repoDir, checkoutDir, branch, checkoutOpts)
   defer os.RemoveAll(branch)
   if err != nil {
