@@ -7,7 +7,6 @@ import (
   "strconv"
   "bytes"
   "unsafe"
-  "fmt"
 
   glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -311,7 +310,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
     }
 
     if strings.Compare(branch, "") != 0 {
-      C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, C.CString(commitChecksum))
+      C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, ccommitChecksum)
     } else if !options.Orphan {
       goto out
     } else {
@@ -322,22 +321,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
     if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(crepo, &stats, cancellable, &cerr))) {
       goto out
     }
-    fmt.Println("committed transaction")
-
-    /* The default for this option is FALSE, even for archive-z2 repos,
-     * because ostree supports multiple processes committing to the same
-     * repo (but different refs) concurrently, and in fact gnome-continuous
-     * actually does this.  In that context it's best to update the summary
-     * explicitly instead of automatically here. */
-    /*
-    TODO: I think this function is declared outside of libostree so I have to hunt it down
-    This is the C code:
-
-    if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
-                                              "commit-update-summary", FALSE,
-                                              &update_summary, error))
-      goto out;
-    */
 
     cerr = nil
     if glib.GoBool(glib.GBoolean(updateSummary)) &&  !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(crepo, nil, cancellable, &cerr))) {
