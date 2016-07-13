@@ -33,8 +33,4 @@ func TestCommitSuccess(t *testing.T) {
   } else {
     fmt.Println(ret)
   }
-
-  /*fmt.Println("sleeping...")
-  d, _ := time.ParseDuration("30s")
-  time.Sleep(d)*/
 }
