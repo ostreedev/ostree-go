@@ -42,7 +42,7 @@ import "C"
  }
 
  func (ht *GHashTableIter) native() *C.GHashTableIter {
- 	return (*C.GHashTable)(ht.ptr)
+ 	return (*C.GHashTableIter)(ht.ptr)
  }
 
  func ToGHashTableIter(ptr unsafe.Pointer) *GHashTableIter {

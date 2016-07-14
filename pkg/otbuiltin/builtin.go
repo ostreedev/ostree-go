@@ -14,24 +14,27 @@ import (
 import "C"
 
 type Repo struct {
-  *glib.GObject
+  //*glib.GObject
+  ptr unsafe.Pointer
 }
 
 func (r *Repo) native() *C.OstreeRepo {
-  return (*C.OstreeRepo)(r.Ptr())
+  //return (*C.OstreeRepo)(r.Ptr())
+  return (*C.OstreeRepo)(r.ptr)
 }
 
 func repoFromNative(p *C.OstreeRepo) *Repo {
   if p == nil {
     return nil
   }
-  o := (*glib.GObject)(unsafe.Pointer(p))
-  r := &Repo{o}
+  //o := (*glib.GObject)(unsafe.Pointer(p))
+  //r := &Repo{o}
+  r := &Repo{unsafe.Pointer(p)}
   return r
 }
 
 func (r *Repo) isInitialized() bool {
-  if r.Ptr() != nil {
+  if r.ptr != nil {
     return true
   }
   return false
@@ -49,4 +52,21 @@ func openRepo(path string) (*Repo, error) {
 		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 	}
 	return repo, nil
+}
+
+func enableTombstoneCommits(repo *Repo) error {
+  var tombstoneCommits bool
+  var config *C.GKeyFile = C.ostree_repo_get_config(repo.native())
+  var cerr *C.GError
+
+  tombstoneCommits = glib.GoBool(glib.GBoolean(C.g_key_file_get_boolean(config, (*C.gchar)(C.CString("core")), (*C.gchar)(C.CString("tombstone-commits")), nil)))
+
+  //tombstoneCommits is false only if it really is false or if it is set to FALSE in the config file
+  if !tombstoneCommits {
+    C.g_key_file_set_boolean(config, (*C.gchar)(C.CString("core")), (*C.gchar)(C.CString("tombstone-commits")), C.TRUE)
+    if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_config(repo.native(), config, &cerr))) {
+      return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+    }
+  }
+    return nil
 }
