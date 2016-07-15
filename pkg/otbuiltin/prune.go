@@ -31,9 +31,9 @@ type pruneOptions struct {
 }
 
 func NewPruneOptions() pruneOptions {
-  var po pruneOptions
+  po := new(pruneOptions)
   po.Depth = -1
-  return po
+  return *po
 }
 
 func Prune(repoPath string, options pruneOptions) (string, error) {

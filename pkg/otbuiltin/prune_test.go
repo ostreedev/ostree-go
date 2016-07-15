@@ -6,71 +6,49 @@ import (
   //"strconv"
   "fmt"
 
-  //"github.com/14rcole/gopopulate"
+  "github.com/14rcole/gopopulate"
 )
 
 func TestPruneNoPrunePass(t *testing.T) {
-  // Create a temporary repository
-  /*baseDir := "/tmp/ostree-go-test"
+  // Make a base directory in which all of our test data resides
+  baseDir := "/tmp/otbuiltin-test/"
   err := os.Mkdir(baseDir, 0777)
   if err != nil {
     t.Errorf("%s", err)
-    return
   }
-  defer os.RemoveAll(baseDir)*/
-  //repoDir := baseDir + "/repo"
-  repoDir := "/tmp/test-init-repo"
-  fmt.Println(repoDir)
-  err := os.Mkdir(repoDir, 0777)
-  if err != nil {
+  defer os.RemoveAll(baseDir)
+  // Make a directory in which the repo should exist
+  repoDir := baseDir + "repo"
+  err = os.Mkdir(repoDir, 0777)
+  if (err != nil){
     t.Errorf("%s", err)
     return
   }
-  defer os.RemoveAll(repoDir)
 
   // Initialize the repo
   inited, err := Init(repoDir, nil)
-  if err != nil {
-    t.Errorf("%s", err)
-    return
-  } else if !inited {
-    t.Errorf("Cannot test commit: failed to initialize repo")
+  if !inited || err != nil {
+    fmt.Println("Cannot test commit: failed to initialize repo")
     return
   }
 
-  // Let's make a few commits
-  /*commitDir := baseDir + "/commits"
-  err = os.Mkdir(commitDir, 0777)
+  //Make a new directory full of random data to commit
+  commitDir := baseDir + "commit1"
+  err = os.Mkdir (commitDir, 0777)
   if err != nil {
     t.Errorf("%s", err)
     return
   }
-  for i := 0; i < 5; i++ {
-    newDir := commitDir + strconv.Itoa(i)
-    err = os.Mkdir(newDir, 0777)
-    if err != nil {
-      t.Errorf("%s", err)
-      return
-    }
-    err = gopopulate.PopulateDir(newDir, "rd", 3, 4)
-    if err != nil {
-      t.Errorf("%s", err)
-      return
-    }
-    commitOpts := NewCommitOptions()
-    branch := "ot-test-commit-" + strconv.Itoa(i)
-    _, err := Commit(repoDir, newDir, branch, commitOpts)
-    if err != nil {
-      t.Errorf("%s", err)
-      return
-    }
-    fmt.Println("Commits completed: ", i)
-  }*/
+  err = gopopulate.PopulateDir(commitDir, "rd", 4, 4)
+  if err != nil {
+    t.Errorf("%s", err)
+    return
+  }
 
   //Test commit
   opts := NewCommitOptions()
   branch := "test-branch"
-  ret, err := Commit(repoDir, "/home/rycole/Development/C-C++/ostree/", branch, opts)
+  ret, err := Commit(repoDir, commitDir, branch, opts)
   if err != nil {
     t.Errorf("%s", err)
   } else {

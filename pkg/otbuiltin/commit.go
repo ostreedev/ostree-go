@@ -81,6 +81,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
   defer C.free(unsafe.Pointer(modifier))
   var cancellable *C.GCancellable
   defer C.free(unsafe.Pointer(cancellable))
+  var err error
 
   cpath := C.CString(commitPath)
   defer C.free(unsafe.Pointer(cpath))
@@ -93,11 +94,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
   cparent := C.CString(options.Parent)
   defer C.free(unsafe.Pointer(cparent))
 
-  // Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
-  _, err := openRepo(repoPath)
-  if err != nil {
-    return "", err
-  }
   // Create a repo struct from the path
   crepoPath := C.g_file_new_for_path(C.CString(repoPath))
   defer C.g_object_unref(crepoPath)
@@ -105,7 +101,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
   if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, cancellable, &cerr))) {
     goto out
   }
-
 
   if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(crepo, &cerr))) {
     goto out
@@ -128,14 +123,14 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
   }
 
   if options.AddMetadataString != nil {
-    err := parseKeyValueStrings(options.AddMetadataString, metadata)
+    err = parseKeyValueStrings(options.AddMetadataString, metadata)
     if err != nil {
       goto out
     }
   }
 
   if options.AddDetachedMetadataString != nil {
-    err := parseKeyValueStrings(options.AddDetachedMetadataString, detachedMetadata)
+    err = parseKeyValueStrings(options.AddDetachedMetadataString, detachedMetadata)
     if err != nil {
       goto out
     }
