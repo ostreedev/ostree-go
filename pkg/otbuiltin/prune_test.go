@@ -19,7 +19,7 @@ func TestPruneNoPrunePass(t *testing.T) {
   }
   defer os.RemoveAll(baseDir)*/
   //repoDir := baseDir + "/repo"
-  repoDir := "/tmp/repo"
+  repoDir := "/tmp/test-init-repo"
   fmt.Println(repoDir)
   err := os.Mkdir(repoDir, 0777)
   if err != nil {
