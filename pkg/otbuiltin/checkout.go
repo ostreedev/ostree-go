@@ -36,10 +36,10 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 
 	var cancellable *glib.GCancellable
 	ccommit := C.CString(commit)
-  defer C.free(unsafe.Pointer(ccommit))
+	defer C.free(unsafe.Pointer(ccommit))
 	var gerr = glib.NewGError()
 	cerr := (*C.GError)(gerr.Ptr())
-  defer C.free(unsafe.Pointer(cerr))
+	defer C.free(unsafe.Pointer(cerr))
 
 	repoPathc := C.g_file_new_for_path(C.CString(repoPath))
 	defer C.g_object_unref(repoPathc)
@@ -55,7 +55,7 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 		}
 	} else {
 		var resolvedCommit *C.char
-    defer C.free(unsafe.Pointer(resolvedCommit))
+		defer C.free(unsafe.Pointer(resolvedCommit))
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(crepo, ccommit, C.FALSE, &resolvedCommit, &cerr))) {
 			return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 		}
@@ -69,10 +69,10 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 
 func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, destination string, cancellable *glib.GCancellable) error {
 	cdest := C.CString(destination)
-  defer C.free(unsafe.Pointer(cdest))
+	defer C.free(unsafe.Pointer(cdest))
 	var gerr = glib.NewGError()
 	cerr := (*C.GError)(gerr.Ptr())
-  defer C.free(unsafe.Pointer(cerr))
+	defer C.free(unsafe.Pointer(cerr))
 	var repoCheckoutOptions C.OstreeRepoCheckoutOptions
 
 	if checkoutOpts.UserMode {

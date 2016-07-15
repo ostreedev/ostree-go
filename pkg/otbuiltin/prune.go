@@ -49,7 +49,7 @@ func Prune(repoPath string, options pruneOptions) (string, error) {
 	var objSizeTotal uint64
 	var gerr = glib.NewGError()
 	var cerr = (*C.GError)(gerr.Ptr())
-  defer C.free(unsafe.Pointer(cerr))
+	defer C.free(unsafe.Pointer(cerr))
 	var cancellable *glib.GCancellable
 
 	if !pruneOpts.NoPrune && !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
@@ -118,7 +118,7 @@ func deleteCommit(repo *Repo, commitToDelete string, cancellable *glib.GCancella
 	var hashkey, hashvalue C.gpointer
 	var gerr = glib.NewGError()
 	var cerr = (*C.GError)(gerr.Ptr())
-  defer C.free(unsafe.Pointer(cerr))
+	defer C.free(unsafe.Pointer(cerr))
 
 	if glib.GoBool(glib.GBoolean(C.ostree_repo_list_refs(repo.native(), nil, (**C.GHashTable)(refs.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
 		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
@@ -151,14 +151,14 @@ func deleteCommit(repo *Repo, commitToDelete string, cancellable *glib.GCancella
 
 func pruneCommitsKeepYoungerThanDate(repo *Repo, date time.Time, cancellable *glib.GCancellable) error {
 	var objects *glib.GHashTable
-  defer C.free(unsafe.Pointer(objects))
+	defer C.free(unsafe.Pointer(objects))
 	var hashIter glib.GHashTableIter
 	var key, value C.gpointer
-  defer C.free(unsafe.Pointer(key))
-  defer C.free(unsafe.Pointer(value))
+	defer C.free(unsafe.Pointer(key))
+	defer C.free(unsafe.Pointer(value))
 	var gerr = glib.NewGError()
 	var cerr = (*C.GError)(gerr.Ptr())
-  defer C.free(unsafe.Pointer(cerr))
+	defer C.free(unsafe.Pointer(cerr))
 
 	if err := enableTombstoneCommits(repo); err != nil {
 		return err
@@ -171,9 +171,9 @@ func pruneCommitsKeepYoungerThanDate(repo *Repo, date time.Time, cancellable *gl
 	C.g_hash_table_iter_init((*C.GHashTableIter)(hashIter.Ptr()), (*C.GHashTable)(objects.Ptr()))
 	for C.g_hash_table_iter_next((*C.GHashTableIter)(hashIter.Ptr()), &key, &value) != 0 {
 		var serializedKey *glib.GVariant
-    defer C.free(unsafe.Pointer(serializedKey))
+		defer C.free(unsafe.Pointer(serializedKey))
 		var checksum *C.char
-    defer C.free(unsafe.Pointer(checksum))
+		defer C.free(unsafe.Pointer(checksum))
 		var objType C.OstreeObjectType
 		var commitTimestamp uint64
 		var commit *glib.GVariant = nil

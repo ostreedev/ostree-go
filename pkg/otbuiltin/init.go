@@ -26,10 +26,10 @@ func Init(path string, options map[string]string) (bool, error) {
 	}
 
 	// Create a repo struct from the path
-  var cerr *C.GError
-  defer C.free(unsafe.Pointer(cerr))
+	var cerr *C.GError
+	defer C.free(unsafe.Pointer(cerr))
 	cpath := C.CString(path)
-  defer C.free(unsafe.Pointer(cpath))
+	defer C.free(unsafe.Pointer(cpath))
 	pathc := C.g_file_new_for_path(cpath)
 	defer C.g_object_unref(pathc)
 	crepo := C.ostree_repo_new(pathc)
