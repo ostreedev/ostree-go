@@ -57,30 +57,41 @@ func NewCommitOptions() commitOptions {
 func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, error) {
   options = opts
 
-
-  var gerr = glib.NewGError()
-  var cerr = (*C.GError)(gerr.Ptr())
-  var metadata *C.GVariant = nil
-  var detachedMetadata *C.GVariant = nil
-  var flags C.OstreeRepoCommitModifierFlags = 0
-  var modifier *C.OstreeRepoCommitModifier
   var modeAdds *glib.GHashTable
   var skipList *glib.GHashTable
-  var mtree *C.OstreeMutableTree
-  var root *C.GFile
   var objectToCommit *glib.GFile
   var skipCommit bool = false
   var ret string
   var commitChecksum string
+  var flags C.OstreeRepoCommitModifierFlags = 0
   var stats C.OstreeRepoTransactionStats
   var filter_data C.CommitFilterData
+
+  var cerr *C.GError
+  defer C.free(unsafe.Pointer(cerr))
+  var metadata *C.GVariant = nil
+  defer C.free(unsafe.Pointer(metadata))
+  var detachedMetadata *C.GVariant = nil
+  defer C.free(unsafe.Pointer(detachedMetadata))
+  var mtree *C.OstreeMutableTree
+  defer C.free(unsafe.Pointer(mtree))
+  var root *C.GFile
+  defer C.free(unsafe.Pointer(root))
+  var modifier *C.OstreeRepoCommitModifier
+  defer C.free(unsafe.Pointer(modifier))
   var cancellable *C.GCancellable
+  defer C.free(unsafe.Pointer(cancellable))
 
   cpath := C.CString(commitPath)
+  defer C.free(unsafe.Pointer(cpath))
   csubject := C.CString(options.Subject)
+  defer C.free(unsafe.Pointer(csubject))
   cbody := C.CString(options.Body)
+  defer C.free(unsafe.Pointer(cbody))
   cbranch := C.CString(branch)
+  defer C.free(unsafe.Pointer(cbranch))
   cparent := C.CString(options.Parent)
+  defer C.free(unsafe.Pointer(cparent))
 
   // Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
   _, err := openRepo(repoPath)
@@ -88,9 +99,9 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
     return "", err
   }
   // Create a repo struct from the path
-  repoPathc := C.g_file_new_for_path(C.CString(repoPath))
-  defer C.g_object_unref(repoPathc)
-  crepo := C.ostree_repo_new(repoPathc)
+  crepoPath := C.g_file_new_for_path(C.CString(repoPath))
+  defer C.g_object_unref(crepoPath)
+  crepo := C.ostree_repo_new(crepoPath)
   if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, cancellable, &cerr))) {
     goto out
   }
@@ -239,6 +250,9 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
       C._g_printerr_onearg(C.CString("Unmatched StatOverride path: "), C._gptr_to_str(key))
     }
     err = errors.New("Unmatched StatOverride paths")
+    C.free(unsafe.Pointer(hashIter))
+    C.free(unsafe.Pointer(key))
+    C.free(unsafe.Pointer(value))
     goto out
   }
 
@@ -252,6 +266,9 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
       C._g_printerr_onearg(C.CString("Unmatched SkipList path: "), C._gptr_to_str(key))
     }
     err = errors.New("Unmatched SkipList paths")
+    C.free(unsafe.Pointer(hashIter))
+    C.free(unsafe.Pointer(key))
+    C.free(unsafe.Pointer(value))
     goto out
   }
 
@@ -265,18 +282,21 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 
     cerr = nil
     if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(crepo, cparent, &parentRoot, nil, cancellable, &cerr))) {
+      C.free(unsafe.Pointer(parentRoot))
       goto out
     }
 
     if glib.GoBool(glib.GBoolean(C.g_file_equal(root, parentRoot))) {
       skipCommit = true
     }
+    C.free(unsafe.Pointer(parentRoot))
   }
 
   if !skipCommit {
     var updateSummary C.gboolean
     var timestamp C.guint64
     var ccommitChecksum = C.CString(commitChecksum)
+    defer C.free(unsafe.Pointer(ccommitChecksum))
 
     if options.Timestamp.IsZero() {
       var now *C.GDateTime = C.g_date_time_new_now_utc()
@@ -314,7 +334,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
     } else if !options.Orphan {
       goto out
     } else {
-
+      // TODO: Looks like I forgot to implement this.
     }
 
     cerr = nil
@@ -352,7 +372,10 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 
   return ret, nil
   out:
-    if crepo != nil { C.ostree_repo_abort_transaction(crepo, cancellable, nil) }
+    if crepo != nil {
+      C.ostree_repo_abort_transaction(crepo, cancellable, nil)
+      C.free(unsafe.Pointer(crepo))
+    }
     if modifier != nil { C.ostree_repo_commit_modifier_unref(modifier) }
     if err != nil{
       return "", err
