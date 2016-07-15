@@ -4,30 +4,51 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	//"time"
+
+	"github.com/14rcole/gopopulate"
 )
 
 func TestCheckoutSuccessProcessOneBranch(t *testing.T) {
-	// Make a directory in which the repo should exist
-	repoDir := "/tmp/test-init-repo"
-	err := os.Mkdir(repoDir, 0777)
+	// Make a base directory in which all of our test data resides
+	baseDir := "/tmp/otbuiltin-test/"
+	err := os.Mkdir(baseDir, 0777)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
 	}
-	defer os.RemoveAll(repoDir)
+	defer os.RemoveAll(baseDir)
+	// Make a directory in which the repo should exist
+	repoDir := baseDir + "repo"
+	err = os.Mkdir(repoDir, 0777)
+	if err != nil {
+		t.Errorf("%s", err)
+		return
+	}
 
 	// Initialize the repo
-	inited, err := Init("/tmp/test-init-repo", nil)
+	inited, err := Init(repoDir, nil)
 	if !inited || err != nil {
 		fmt.Println("Cannot test commit: failed to initialize repo")
 		return
 	}
 
-	//Commit to the repo
-	commitOpts := NewCommitOptions()
+	//Make a new directory full of random data to commit
+	commitDir := baseDir + "commit1"
+	err = os.Mkdir(commitDir, 0777)
+	if err != nil {
+		t.Errorf("%s", err)
+		return
+	}
+	err = gopopulate.PopulateDir(commitDir, "rd", 4, 4)
+	if err != nil {
+		t.Errorf("%s", err)
+		return
+	}
+
+	//Test commit
+	opts := NewCommitOptions()
 	branch := "test-branch"
-	ret, err := Commit(repoDir, "/home/rycole/Development/C-C++/ostree", branch, commitOpts)
+	ret, err := Commit(repoDir, commitDir, branch, opts)
 	if err != nil {
 		t.Errorf("%s", err)
 	} else {
@@ -35,18 +56,9 @@ func TestCheckoutSuccessProcessOneBranch(t *testing.T) {
 	}
 
 	checkoutOpts := NewCheckoutOptions()
-	checkoutDir := "/tmp/checkout"
-	if err != nil {
-		t.Errorf("%s", err)
-		return
-	}
-	// The directory will be created when the Checkout is made
-	defer os.RemoveAll(checkoutDir)
+	checkoutDir := baseDir + "checkout"
 
-	/*fmt.Println("This is your opportunity to do a quick checkout yourself")
-	  d, _ := time.ParseDuration("30s")
-	  time.Sleep(d)
-	*/
+	// Don't create the checkout dir, it will be created in the checkout function
 	err = Checkout(repoDir, checkoutDir, branch, checkoutOpts)
 	defer os.RemoveAll(branch)
 	if err != nil {

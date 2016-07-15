@@ -14,6 +14,7 @@ func TestCommitSuccess(t *testing.T) {
 	err := os.Mkdir(baseDir, 0777)
 	if err != nil {
 		t.Errorf("%s", err)
+		return
 	}
 	defer os.RemoveAll(baseDir)
 	// Make a directory in which the repo should exist
