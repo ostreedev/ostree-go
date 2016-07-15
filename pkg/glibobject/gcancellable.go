@@ -27,7 +27,7 @@ package glibobject
 import "C"
 
 import (
-			 "unsafe"
+	"unsafe"
 )
 
 // GIO types

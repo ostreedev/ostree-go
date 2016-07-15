@@ -19,7 +19,7 @@
 package glibobject
 
 import (
-			 "unsafe"
+	"unsafe"
 )
 
 // #cgo pkg-config: glib-2.0 gobject-2.0
@@ -34,18 +34,18 @@ import "C"
  * GOptionContext
  */
 
- type GOptionContext struct {
-   ptr unsafe.Pointer
- }
+type GOptionContext struct {
+	ptr unsafe.Pointer
+}
 
 func (oc *GOptionContext) Ptr() unsafe.Pointer {
-  return oc.ptr
+	return oc.ptr
 }
 
 func (oc *GOptionContext) native() *C.GOptionContext {
-  return (*C.GOptionContext)(oc.ptr)
+	return (*C.GOptionContext)(oc.ptr)
 }
 
 func ToGOptionContext(ptr unsafe.Pointer) GOptionContext {
-  return GOptionContext{ptr}
+	return GOptionContext{ptr}
 }

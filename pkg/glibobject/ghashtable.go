@@ -19,7 +19,7 @@
 package glibobject
 
 import (
-			 "unsafe"
+	"unsafe"
 )
 
 // #cgo pkg-config: glib-2.0 gobject-2.0

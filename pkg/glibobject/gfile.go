@@ -33,20 +33,20 @@ import (
  * GFile
  */
 
- type GFile struct {
-   ptr unsafe.Pointer
- }
+type GFile struct {
+	ptr unsafe.Pointer
+}
 
- func (f GFile) Ptr() unsafe.Pointer {
-   return f.ptr
- }
+func (f GFile) Ptr() unsafe.Pointer {
+	return f.ptr
+}
 
- func NewGFile() *GFile {
-	 return &GFile{nil}
- }
+func NewGFile() *GFile {
+	return &GFile{nil}
+}
 
- func ToGFile(ptr unsafe.Pointer) *GFile {
-   gf := NewGFile()
-   gf.ptr = ptr
-   return gf
- }
+func ToGFile(ptr unsafe.Pointer) *GFile {
+	gf := NewGFile()
+	gf.ptr = ptr
+	return gf
+}

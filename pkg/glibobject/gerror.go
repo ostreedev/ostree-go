@@ -26,8 +26,8 @@ package glibobject
 // #include <stdlib.h>
 import "C"
 import (
-	"unsafe"
 	"errors"
+	"unsafe"
 )
 
 /*
@@ -44,13 +44,13 @@ func NewGError() GError {
 }
 
 func (e GError) Ptr() unsafe.Pointer {
-	if e.ptr == nil  {
+	if e.ptr == nil {
 		return nil
 	}
 	return e.ptr
 }
 
-func (e GError) Nil()  {
+func (e GError) Nil() {
 	e.ptr = nil
 }
 

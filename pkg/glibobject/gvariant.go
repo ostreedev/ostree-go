@@ -26,8 +26,8 @@ package glibobject
 // #include <stdlib.h>
 import "C"
 import (
-	"unsafe"
 	"fmt"
+	"unsafe"
 )
 
 /*
@@ -35,24 +35,24 @@ import (
  */
 
 type GVariant struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 //func GVariantNew(p unsafe.Pointer) *GVariant {
-	//o := &GVariant{p}
-	//runtime.SetFinalizer(o, (*GVariant).Unref)
-	//return o;
+//o := &GVariant{p}
+//runtime.SetFinalizer(o, (*GVariant).Unref)
+//return o;
 //}
 
 //func GVariantNewSink(p unsafe.Pointer) *GVariant {
-	//o := &GVariant{p}
-	//runtime.SetFinalizer(o, (*GVariant).Unref)
-	//o.RefSink()
-	//return o;
+//o := &GVariant{p}
+//runtime.SetFinalizer(o, (*GVariant).Unref)
+//o.RefSink()
+//return o;
 //}
 
 func (v *GVariant) native() *C.GVariant {
-	return (*C.GVariant)(v.ptr);
+	return (*C.GVariant)(v.ptr)
 }
 
 func (v *GVariant) Ptr() unsafe.Pointer {
@@ -78,7 +78,7 @@ func (v *GVariant) TypeString() string {
 
 func (v *GVariant) GetChildValue(i int) *GVariant {
 	cchild := C.g_variant_get_child_value(v.native(), C.gsize(i))
-	return (*GVariant)(unsafe.Pointer(cchild));
+	return (*GVariant)(unsafe.Pointer(cchild))
 }
 
 func (v *GVariant) LookupString(key string) (string, error) {

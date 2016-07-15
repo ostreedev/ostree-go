@@ -19,7 +19,7 @@
 package glibobject
 
 import (
-			 "unsafe"
+	"unsafe"
 )
 
 // #cgo pkg-config: glib-2.0 gobject-2.0
@@ -33,18 +33,18 @@ import "C"
 /*
  * GHashTableIter
  */
- type GHashTableIter struct {
- 	ptr unsafe.Pointer
- }
+type GHashTableIter struct {
+	ptr unsafe.Pointer
+}
 
- func (ht *GHashTableIter) Ptr() unsafe.Pointer {
- 	return ht.ptr
- }
+func (ht *GHashTableIter) Ptr() unsafe.Pointer {
+	return ht.ptr
+}
 
- func (ht *GHashTableIter) native() *C.GHashTableIter {
- 	return (*C.GHashTableIter)(ht.ptr)
- }
+func (ht *GHashTableIter) native() *C.GHashTableIter {
+	return (*C.GHashTableIter)(ht.ptr)
+}
 
- func ToGHashTableIter(ptr unsafe.Pointer) *GHashTableIter {
- 	return &GHashTableIter{ptr}
- }
+func ToGHashTableIter(ptr unsafe.Pointer) *GHashTableIter {
+	return &GHashTableIter{ptr}
+}
