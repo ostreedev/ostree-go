@@ -63,6 +63,12 @@ _at_fdcwd ()
   return AT_FDCWD;
 }
 
+static guint64
+_guint64_from_be (guint64 val)
+{
+  return GUINT64_FROM_BE (val);
+}
+
 
 
 // These functions are wrappers for variadic functions since CGO can't parse variadic functions
@@ -94,6 +100,16 @@ static GHashTable*
 _g_hash_table_new_full ()
 {
   return g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+}
+
+static void
+_g_variant_get_commit_dump (GVariant    *variant,
+                            const char  *format,
+                            char        **subject,
+                            char        **body,
+                            guint64     *timestamp)
+{
+  return g_variant_get (variant, format, NULL, NULL, NULL, subject, body, timestamp, NULL, NULL);
 }
 
 static guint32
