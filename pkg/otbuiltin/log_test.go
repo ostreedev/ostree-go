@@ -1,15 +1,15 @@
 package otbuiltin
 
 import (
-  "testing"
-  "os"
-  "fmt"
+	"fmt"
+	"os"
+	"testing"
 
-  "github.com/14rcole/gopopulate"
+	"github.com/14rcole/gopopulate"
 )
 
 func TestLogSuccess(t *testing.T) {
-  // Make a base directory in which all of our test data resides
+	// Make a base directory in which all of our test data resides
 	baseDir := "/tmp/otbuiltin-test/"
 	err := os.Mkdir(baseDir, 0777)
 	if err != nil {
@@ -54,19 +54,19 @@ func TestLogSuccess(t *testing.T) {
 		fmt.Println(ret)
 	}
 
-  // Add more files to the commit dir and return an updated
-  err = gopopulate.PopulateDir(commitDir, "rd", 4, 4)
-  if err != nil {
-    t.Errorf("%s", err)
-    return
-  }
+	// Add more files to the commit dir and return an updated
+	err = gopopulate.PopulateDir(commitDir, "rd", 4, 4)
+	if err != nil {
+		t.Errorf("%s", err)
+		return
+	}
 
-  // Get the logs for the branch
-  logOpts := NewLogOptions()
-  entries, err := Log(repoDir, branch, logOpts)
-  if err != nil {
-    t.Errorf("%s", err)
-    return
-  }
-  fmt.Printf("%+v\n", entries)
+	// Get the logs for the branch
+	logOpts := NewLogOptions()
+	entries, err := Log(repoDir, branch, logOpts)
+	if err != nil {
+		t.Errorf("%s", err)
+		return
+	}
+	fmt.Printf("%+v\n", entries)
 }
