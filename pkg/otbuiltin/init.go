@@ -16,13 +16,27 @@ import (
 import "C"
 
 // Declare variables for options
-var mode C.OstreeRepoMode = C.OSTREE_REPO_MODE_BARE
+var initOpts initOptions
 
-func Init(path string, options map[string]string) (bool, error) {
-	err := parseArgs(options)
-	if err != nil {
-		return false, err
-	}
+type initOptions struct {
+  Mode string // either bare, archive-z2, or bare-user
+
+  repoMode C.OstreeRepoMode
+}
+
+func NewInitOptions() initOptions {
+  io := initOptions{}
+  io.Mode = "bare"
+  io.repoMode = C.OSTREE_REPO_MODE_BARE
+  return io
+}
+
+func Init(path string, options initOptions) (bool, error) {
+  initOpts = options
+  err := parseMode()
+  if err != nil {
+    return false, err
+  }
 
 	// Create a repo struct from the path
 	var cerr *C.GError
@@ -44,7 +58,7 @@ func Init(path string, options map[string]string) (bool, error) {
 	}*/
 
 	cerr = nil
-	created := glib.GoBool(glib.GBoolean(C.ostree_repo_create(crepo, mode, nil, &cerr)))
+	created := glib.GoBool(glib.GBoolean(C.ostree_repo_create(crepo, initOpts.repoMode, nil, &cerr)))
 	if !created {
 		errString := glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr))).Error()
 		if strings.Contains(errString, "File exists") {
@@ -55,19 +69,15 @@ func Init(path string, options map[string]string) (bool, error) {
 	return true, nil
 }
 
-func parseArgs(options map[string]string) error {
-	for key, val := range options {
-		if strings.EqualFold(key, "mode") {
-			if strings.EqualFold("bare", val) {
-				mode = C.OSTREE_REPO_MODE_BARE
-			} else if strings.EqualFold("archive-z2", val) {
-				mode = C.OSTREE_REPO_MODE_ARCHIVE_Z2
-			} else if strings.EqualFold("bare-user", val) {
-				mode = C.OSTREE_REPO_MODE_BARE_USER
-			} else {
-				return errors.New("Invalid option for mode")
-			}
-		}
-	}
-	return nil
+func parseMode() error {
+  if strings.EqualFold(initOpts.Mode, "bare") {
+    initOpts.repoMode = C.OSTREE_REPO_MODE_BARE
+  } else if strings.EqualFold(initOpts.Mode, "archive-z2") {
+    initOpts.repoMode = C.OSTREE_REPO_MODE_BARE_USER
+  } else if strings.EqualFold(initOpts.Mode, "archive-z2") {
+    initOpts.repoMode = C.OSTREE_REPO_MODE_ARCHIVE_Z2
+  } else {
+    return errors.New("Invalid option for mode")
+  }
+  return nil
 }

@@ -25,7 +25,7 @@ func TestLogSuccess(t *testing.T) {
 	}
 
 	// Initialize the repo
-	inited, err := Init(repoDir, nil)
+	inited, err := Init(repoDir, NewInitOptions())
 	if !inited || err != nil {
 		fmt.Println("Cannot test commit: failed to initialize repo")
 		return

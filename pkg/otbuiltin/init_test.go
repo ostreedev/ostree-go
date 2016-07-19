@@ -23,7 +23,7 @@ func TestInitSuccess(t *testing.T) {
 	}
 
 	// Initialize the repo
-	inited, err := Init(repoDir, nil)
+	inited, err := Init(repoDir, NewInitOptions())
 	if err != nil {
 		t.Errorf("%s", err)
 		return
