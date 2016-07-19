@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 	"unsafe"
+  "fmt"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -19,6 +20,21 @@ var logOpts logOptions
 
 const formatString = "2006-01-02 03:04;05 -0700"
 
+type LogEntry struct {
+	Checksum  []byte
+	Variant   []byte
+	Timestamp time.Time
+	Subject   string
+	Body      string
+}
+
+func (l LogEntry) String() string {
+  if len(l.Variant) == 0 {
+    return fmt.Sprintf("%s\n%s\n\n\t%s\n\n\t%s\n\n", l.Checksum, l.Timestamp, l.Subject, l.Body)
+  }
+  return fmt.Sprintf("%s\n%s\n\n", l.Checksum, l.Variant)
+}
+
 type OstreeDumpFlags uint
 
 const (
@@ -32,14 +48,6 @@ type logOptions struct {
 
 func NewLogOptions() logOptions {
 	return logOptions{}
-}
-
-type LogEntry struct {
-	Checksum  []byte
-	Variant   []byte
-	Timestamp time.Time
-	Subject   string
-	Body      string
 }
 
 func Log(repoPath, branch string, options logOptions) ([]LogEntry, error) {
