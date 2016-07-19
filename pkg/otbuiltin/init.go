@@ -2,7 +2,6 @@ package otbuiltin
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"unsafe"
 
@@ -51,7 +50,6 @@ func Init(path string, options map[string]string) (bool, error) {
 		if strings.Contains(errString, "File exists") {
 			return true, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 		}
-		fmt.Println("Error is here")
 		return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 	}
 	return true, nil
