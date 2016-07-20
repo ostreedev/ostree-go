@@ -353,7 +353,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		var buffer bytes.Buffer
 
 		buffer.WriteString("Commit: ")
-		buffer.WriteString(commitChecksum)
+		buffer.WriteString(C.GoString(commitChecksum))
 		buffer.WriteString("\nMetadata Total: ")
 		buffer.WriteString(strconv.Itoa((int)(stats.metadata_objects_total)))
 		buffer.WriteString("\nMetadata Written: ")
@@ -366,7 +366,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		buffer.WriteString(strconv.Itoa((int)(stats.content_bytes_written)))
 		ret = buffer.String()
 	} else {
-		ret = commitChecksum
+		ret = C.GoString(commitChecksum)
 	}
 
 	return ret, nil
