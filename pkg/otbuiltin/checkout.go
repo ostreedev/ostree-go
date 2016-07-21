@@ -17,11 +17,14 @@ import "C"
 var checkoutOpts checkoutOptions
 
 type checkoutOptions struct {
-	UserMode   bool   // Do not change file ownership or initialize extended attributes
-	Union      bool   // Keep existing directories and unchanged files, overwriting existing filesystem
-	AllowNoent bool   // Do nothing if the specified filepath does not exist
-	Subpath    string // Checkout sub-directory path
-	FromFile   string // Process many checkouts from the given file
+	UserMode         bool   // Do not change file ownership or initialize extended attributes
+	Union            bool   // Keep existing directories and unchanged files, overwriting existing filesystem
+	AllowNoent       bool   // Do nothing if the specified filepath does not exist
+	DisableCache     bool   // Do not update or use the internal repository uncompressed object caceh
+	Whiteouts        bool   // Process 'whiteout' (docker style) entries
+	RequireHardlinks bool   // Do not fall back to full copies if hard linking fails
+	Subpath          string // Checkout sub-directory path
+	FromFile         string // Process many checkouts from the given file
 
 	mode          int
 	overwriteMode int
