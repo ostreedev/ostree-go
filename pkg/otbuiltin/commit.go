@@ -34,7 +34,7 @@ type commitOptions struct {
 	OwnerGID                  int       // Set file ownership to group id
 	NoXattrs                  bool      // Do not import extended attributes
 	LinkCheckoutSpeedup       bool      // Optimize for commits of trees composed of hardlinks in the repository
-	TarAuotocreateParents     bool      // When loading tar archives, automatically create parent directories as needed
+	TarAutoCreateParents     bool      // When loading tar archives, automatically create parent directories as needed
 	SkipIfUnchanged           bool      // If the contents are unchanged from a previous commit, do nothing
 	StatOverrideFile          string    // File containing list of modifications to make permissions
 	SkipListFile              string    // File containing list of file paths to skip
@@ -94,22 +94,21 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	defer C.free(unsafe.Pointer(cbranch))
 	cparent := C.CString(options.Parent)
 	defer C.free(unsafe.Pointer(cparent))
-  var err error
 
 	// Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
-//	_, err := openRepo(repoPath)
-	//if err != nil {
-		//return "", err
-	//}
-	// Create a repo struct from the path
-	crepoPath := C.g_file_new_for_path(C.CString(repoPath))
-	defer C.g_object_unref(crepoPath)
-	crepo := C.ostree_repo_new(crepoPath)
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, cancellable, &cerr))) {
-		goto out
+	repo, err := openRepo(repoPath)
+	if err != nil {
+		return "", err
 	}
+	 //Create a repo struct from the path
+	/*repo.native()Path := C.g_file_new_for_path(C.CString(repoPath))
+	defer C.g_object_unref(repo.native()Path)
+	repo.native() := C.ostree_repo_new(repo.native()Path)
+	if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(repo.native(), cancellable, &cerr))) {
+		goto out
+	}*/
 
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(crepo, &cerr))) {
+	if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
 		goto out
 	}
 
@@ -155,7 +154,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		C._ostree_repo_append_modifier_flags(&flags, C.OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
 	}
 	if !options.Fsync {
-		C.ostree_repo_set_disable_fsync(crepo, C.TRUE)
+		C.ostree_repo_set_disable_fsync(repo.native(), C.TRUE)
 	}
 
 	if flags != 0 || options.OwnerUID >= 0 || options.OwnerGID >= 0 || strings.Compare(options.StatOverrideFile, "") != 0 || options.NoXattrs {
@@ -172,17 +171,17 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		}
 	} else if !options.Orphan {
 		cerr = nil
-		if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(crepo, cbranch, C.TRUE, &cparent, &cerr))) {
+		if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), cbranch, C.TRUE, &cparent, &cerr))) {
 			goto out
 		}
 	}
 
 	cerr = nil
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(crepo, nil, cancellable, &cerr))) {
+	if !glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(repo.native(), nil, cancellable, &cerr))) {
 		goto out
 	}
 
-	if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(C.ostree_repo_scan_hardlinks(crepo, cancellable, &cerr))) {
+	if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(C.ostree_repo_scan_hardlinks(repo.native(), cancellable, &cerr))) {
 		goto out
 	}
 
@@ -193,7 +192,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(currentDir)))
 		C.g_free(currentDir)
 
-		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
 			goto out
 		}
 	} else if len(options.Tree) != 0 {
@@ -210,21 +209,21 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 
 			if strings.Compare(treeType, "dir") == 0 {
 				objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
-				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
 					goto out
 				}
 			} else if strings.Compare(treeType, "tar") == 0 {
 				objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
-				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_archive_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_archive_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (C.gboolean)(glib.GBool(opts.TarAutoCreateParents)), cancellable, &cerr))) {
           fmt.Println("error 1")
 					goto out
 				}
 			} else if strings.Compare(treeType, "ref") == 0 {
-				if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(crepo, C.CString(treeVal), (**C.GFile)(objectToCommit.Ptr()), nil, cancellable, &cerr))) {
+				if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), C.CString(treeVal), (**C.GFile)(objectToCommit.Ptr()), nil, cancellable, &cerr))) {
 					goto out
 				}
 
-				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
 					goto out
 				}
 			} else {
@@ -235,7 +234,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	} else {
 		objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(cpath)))
 		cerr = nil
-		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
 			goto out
 		}
 	}
@@ -274,7 +273,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	}
 
 	cerr = nil
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_mtree(crepo, mtree, &root, cancellable, &cerr))) {
+	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_mtree(repo.native(), mtree, &root, cancellable, &cerr))) {
 		goto out
 	}
 
@@ -282,7 +281,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		var parentRoot *C.GFile
 
 		cerr = nil
-		if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(crepo, cparent, &parentRoot, nil, cancellable, &cerr))) {
+		if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), cparent, &parentRoot, nil, cancellable, &cerr))) {
 			C.free(unsafe.Pointer(parentRoot))
 			goto out
 		}
@@ -303,33 +302,33 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 			C.g_date_time_unref(now)
 
 			cerr = nil
-			if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(crepo, cparent, csubject, cbody,
+			if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(repo.native(), cparent, csubject, cbody,
 				metadata, C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr))) {
 				goto out
 			}
 		} else {
 			timestamp = (C.guint64)(options.Timestamp.Unix())
 
-			if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(crepo, cparent, csubject, cbody,
+			if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit_with_time(repo.native(), cparent, csubject, cbody,
 				metadata, C._ostree_repo_file(root), timestamp, &ccommitChecksum, cancellable, &cerr))) {
 				goto out
 			}
 		}
 
 		if detachedMetadata != nil {
-			C.ostree_repo_write_commit_detached_metadata(crepo, ccommitChecksum, detachedMetadata, cancellable, &cerr)
+			C.ostree_repo_write_commit_detached_metadata(repo.native(), ccommitChecksum, detachedMetadata, cancellable, &cerr)
 		}
 
 		if len(options.GpgSign) != 0 {
 			for key := range options.GpgSign {
-				if !glib.GoBool(glib.GBoolean(C.ostree_repo_sign_commit(crepo, (*C.gchar)(ccommitChecksum), (*C.gchar)(C.CString(options.GpgSign[key])), (*C.gchar)(C.CString(options.GpgHomedir)), cancellable, &cerr))) {
+				if !glib.GoBool(glib.GBoolean(C.ostree_repo_sign_commit(repo.native(), (*C.gchar)(ccommitChecksum), (*C.gchar)(C.CString(options.GpgSign[key])), (*C.gchar)(C.CString(options.GpgHomedir)), cancellable, &cerr))) {
 					goto out
 				}
 			}
 		}
 
 		if strings.Compare(branch, "") != 0 {
-			C.ostree_repo_transaction_set_ref(crepo, nil, cbranch, ccommitChecksum)
+			C.ostree_repo_transaction_set_ref(repo.native(), nil, cbranch, ccommitChecksum)
 		} else if !options.Orphan {
 			goto out
 		} else {
@@ -337,12 +336,12 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		}
 
 		cerr = nil
-		if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(crepo, &stats, cancellable, &cerr))) {
+		if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(repo.native(), &stats, cancellable, &cerr))) {
 			goto out
 		}
 
 		cerr = nil
-		if glib.GoBool(glib.GBoolean(updateSummary)) && !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(crepo, nil, cancellable, &cerr))) {
+		if glib.GoBool(glib.GBoolean(updateSummary)) && !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(repo.native(), nil, cancellable, &cerr))) {
 			goto out
 		}
 	} else {
@@ -371,9 +370,9 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 
 	return ret, nil
 out:
-	if crepo != nil {
-		C.ostree_repo_abort_transaction(crepo, cancellable, nil)
-		//C.free(unsafe.Pointer(crepo))
+	if repo.native() != nil {
+		C.ostree_repo_abort_transaction(repo.native(), cancellable, nil)
+		//C.free(unsafe.Pointer(repo.native()))
 	}
 	if modifier != nil {
 		C.ostree_repo_commit_modifier_unref(modifier)
