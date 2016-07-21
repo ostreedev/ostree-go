@@ -81,7 +81,7 @@ func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, de
 	var gerr = glib.NewGError()
 	cerr := (*C.GError)(gerr.Ptr())
 	defer C.free(unsafe.Pointer(cerr))
-  var repoCheckoutOptions C.OstreeRepoCheckoutOptions
+	var repoCheckoutOptions C.OstreeRepoCheckoutOptions
 
 	if checkoutOpts.UserMode {
 		repoCheckoutOptions.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
