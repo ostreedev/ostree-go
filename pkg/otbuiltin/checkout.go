@@ -20,14 +20,19 @@ type checkoutOptions struct {
 	UserMode         bool   // Do not change file ownership or initialize extended attributes
 	Union            bool   // Keep existing directories and unchanged files, overwriting existing filesystem
 	AllowNoent       bool   // Do nothing if the specified filepath does not exist
-	DisableCache     bool   // Do not update or use the internal repository uncompressed object caceh
-	Whiteouts        bool   // Process 'whiteout' (docker style) entries
-	RequireHardlinks bool   // Do not fall back to full copies if hard linking fails
 	Subpath          string // Checkout sub-directory path
 	FromFile         string // Process many checkouts from the given file
 
 	mode          int
 	overwriteMode int
+	UserMode   bool   // Do not change file ownership or initialize extended attributes
+	Union      bool   // Keep existing directories and unchanged files, overwriting existing filesystem
+	AllowNoent bool   // Do nothing if the specified filepath does not exist
+	DisableCache     bool   // Do not update or use the internal repository uncompressed object caceh
+	Whiteouts        bool   // Process 'whiteout' (docker style) entries
+	RequireHardlinks bool   // Do not fall back to full copies if hard linking fails
+	Subpath    string // Checkout sub-directory path
+	FromFile   string // Process many checkouts from the given file
 }
 
 func NewCheckoutOptions() checkoutOptions {
@@ -76,13 +81,13 @@ func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, de
 	var gerr = glib.NewGError()
 	cerr := (*C.GError)(gerr.Ptr())
 	defer C.free(unsafe.Pointer(cerr))
-	var repoCheckoutOptions C.OstreeRepoCheckoutOptions
+  var repoCheckoutOptions C.OstreeRepoCheckoutOptions
 
 	if checkoutOpts.UserMode {
-		checkoutOpts.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
+		repoCheckoutOptions.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
 	}
 	if checkoutOpts.Union {
-		checkoutOpts.overwriteMode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+		repoCheckoutOptions.overwrite_mode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
 	}
 
 	checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree_at(crepo, &repoCheckoutOptions, C._at_fdcwd(), cdest, resolvedCommit, nil, &cerr)))
