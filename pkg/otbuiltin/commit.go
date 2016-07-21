@@ -187,7 +187,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 
 	mtree = C.ostree_mutable_tree_new()
 
-	if len(commitPath) == 0 && (len(options.Tree) == 0 || len(options.Tree[1]) == 0) {
+	if len(commitPath) == 0 && (len(options.Tree) == 0 || len(options.Tree[0]) == 0) {
 		currentDir := (*C.char)(C.g_get_current_dir())
 		objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(currentDir)))
 		C.g_free(currentDir)
