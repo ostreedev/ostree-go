@@ -62,7 +62,8 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	var objectToCommit *glib.GFile
 	var skipCommit bool = false
 	var ret string
-	var commitChecksum string
+	var ccommitChecksum *C.char
+	defer C.free(unsafe.Pointer(ccommitChecksum))
 	var flags C.OstreeRepoCommitModifierFlags = 0
 	var stats C.OstreeRepoTransactionStats
 	var filter_data C.CommitFilterData
@@ -294,8 +295,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	if !skipCommit {
 		var updateSummary C.gboolean
 		var timestamp C.guint64
-		var ccommitChecksum = C.CString(commitChecksum)
-		defer C.free(unsafe.Pointer(ccommitChecksum))
 
 		if options.Timestamp.IsZero() {
 			var now *C.GDateTime = C.g_date_time_new_now_utc()
@@ -346,14 +345,14 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 			goto out
 		}
 	} else {
-		commitChecksum = options.Parent
+		ccommitChecksum = C.CString(options.Parent)
 	}
 
 	if options.TableOutput {
 		var buffer bytes.Buffer
 
 		buffer.WriteString("Commit: ")
-		buffer.WriteString(C.GoString(commitChecksum))
+		buffer.WriteString(C.GoString(ccommitChecksum))
 		buffer.WriteString("\nMetadata Total: ")
 		buffer.WriteString(strconv.Itoa((int)(stats.metadata_objects_total)))
 		buffer.WriteString("\nMetadata Written: ")
@@ -366,7 +365,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		buffer.WriteString(strconv.Itoa((int)(stats.content_bytes_written)))
 		ret = buffer.String()
 	} else {
-		ret = C.GoString(commitChecksum)
+		ret = C.GoString(ccommitChecksum)
 	}
 
 	return ret, nil
