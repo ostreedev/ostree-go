@@ -19,24 +19,24 @@ import "C"
 var initOpts initOptions
 
 type initOptions struct {
-  Mode string // either bare, archive-z2, or bare-user
+	Mode string // either bare, archive-z2, or bare-user
 
-  repoMode C.OstreeRepoMode
+	repoMode C.OstreeRepoMode
 }
 
 func NewInitOptions() initOptions {
-  io := initOptions{}
-  io.Mode = "bare"
-  io.repoMode = C.OSTREE_REPO_MODE_BARE
-  return io
+	io := initOptions{}
+	io.Mode = "bare"
+	io.repoMode = C.OSTREE_REPO_MODE_BARE
+	return io
 }
 
 func Init(path string, options initOptions) (bool, error) {
-  initOpts = options
-  err := parseMode()
-  if err != nil {
-    return false, err
-  }
+	initOpts = options
+	err := parseMode()
+	if err != nil {
+		return false, err
+	}
 
 	// Create a repo struct from the path
 	var cerr *C.GError
@@ -70,14 +70,14 @@ func Init(path string, options initOptions) (bool, error) {
 }
 
 func parseMode() error {
-  if strings.EqualFold(initOpts.Mode, "bare") {
-    initOpts.repoMode = C.OSTREE_REPO_MODE_BARE
-  } else if strings.EqualFold(initOpts.Mode, "archive-z2") {
-    initOpts.repoMode = C.OSTREE_REPO_MODE_BARE_USER
-  } else if strings.EqualFold(initOpts.Mode, "archive-z2") {
-    initOpts.repoMode = C.OSTREE_REPO_MODE_ARCHIVE_Z2
-  } else {
-    return errors.New("Invalid option for mode")
-  }
-  return nil
+	if strings.EqualFold(initOpts.Mode, "bare") {
+		initOpts.repoMode = C.OSTREE_REPO_MODE_BARE
+	} else if strings.EqualFold(initOpts.Mode, "archive-z2") {
+		initOpts.repoMode = C.OSTREE_REPO_MODE_BARE_USER
+	} else if strings.EqualFold(initOpts.Mode, "archive-z2") {
+		initOpts.repoMode = C.OSTREE_REPO_MODE_ARCHIVE_Z2
+	} else {
+		return errors.New("Invalid option for mode")
+	}
+	return nil
 }

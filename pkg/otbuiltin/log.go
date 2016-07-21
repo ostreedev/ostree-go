@@ -1,10 +1,10 @@
 package otbuiltin
 
 import (
+	"fmt"
 	"strings"
 	"time"
 	"unsafe"
-  "fmt"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -29,10 +29,10 @@ type LogEntry struct {
 }
 
 func (l LogEntry) String() string {
-  if len(l.Variant) == 0 {
-    return fmt.Sprintf("%s\n%s\n\n\t%s\n\n\t%s\n\n", l.Checksum, l.Timestamp, l.Subject, l.Body)
-  }
-  return fmt.Sprintf("%s\n%s\n\n", l.Checksum, l.Variant)
+	if len(l.Variant) == 0 {
+		return fmt.Sprintf("%s\n%s\n\n\t%s\n\n\t%s\n\n", l.Checksum, l.Timestamp, l.Subject, l.Body)
+	}
+	return fmt.Sprintf("%s\n%s\n\n", l.Checksum, l.Variant)
 }
 
 type OstreeDumpFlags uint

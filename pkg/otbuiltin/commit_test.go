@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-  "github.com/jhoonb/archivex"
+	"github.com/jhoonb/archivex"
 
 	"github.com/14rcole/gopopulate"
 )
@@ -94,17 +94,16 @@ func TestCommitTreeSuccess(t *testing.T) {
 		t.Errorf("%s", err)
 		return
 	}
-  tarPath := baseDir + "tree.tar"
-  tar := new(archivex.TarFile)
-  tar.Create(tarPath)
-  tar.AddAll(commitDir, true)
-  tar.Close()
-
+	tarPath := baseDir + "tree.tar"
+	tar := new(archivex.TarFile)
+	tar.Create(tarPath)
+	tar.AddAll(commitDir, true)
+	tar.Close()
 
 	//Test commit
 	opts := NewCommitOptions()
-  opts.Subject = "blob"
-  opts.Tree = []string{"tar=" + tarPath}
+	opts.Subject = "blob"
+	opts.Tree = []string{"tar=" + tarPath}
 	branch := "test-branch"
 	ret, err := Commit(repoDir, "", branch, opts)
 	if err != nil {

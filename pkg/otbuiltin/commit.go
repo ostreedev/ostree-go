@@ -3,11 +3,11 @@ package otbuiltin
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
-  "fmt"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -34,7 +34,7 @@ type commitOptions struct {
 	OwnerGID                  int       // Set file ownership to group id
 	NoXattrs                  bool      // Do not import extended attributes
 	LinkCheckoutSpeedup       bool      // Optimize for commits of trees composed of hardlinks in the repository
-	TarAutoCreateParents     bool      // When loading tar archives, automatically create parent directories as needed
+	TarAutoCreateParents      bool      // When loading tar archives, automatically create parent directories as needed
 	SkipIfUnchanged           bool      // If the contents are unchanged from a previous commit, do nothing
 	StatOverrideFile          string    // File containing list of modifications to make permissions
 	SkipListFile              string    // File containing list of file paths to skip
@@ -100,7 +100,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	if err != nil {
 		return "", err
 	}
-	 //Create a repo struct from the path
+	//Create a repo struct from the path
 	/*repo.native()Path := C.g_file_new_for_path(C.CString(repoPath))
 	defer C.g_object_unref(repo.native()Path)
 	repo.native() := C.ostree_repo_new(repo.native()Path)
@@ -215,7 +215,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 			} else if strings.Compare(treeType, "tar") == 0 {
 				objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
 				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_archive_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, (C.gboolean)(glib.GBool(opts.TarAutoCreateParents)), cancellable, &cerr))) {
-          fmt.Println("error 1")
+					fmt.Println("error 1")
 					goto out
 				}
 			} else if strings.Compare(treeType, "ref") == 0 {
