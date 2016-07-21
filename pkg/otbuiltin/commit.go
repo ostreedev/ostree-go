@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"unsafe"
+  "fmt"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -93,12 +94,13 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	defer C.free(unsafe.Pointer(cbranch))
 	cparent := C.CString(options.Parent)
 	defer C.free(unsafe.Pointer(cparent))
+  var err error
 
 	// Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
-	_, err := openRepo(repoPath)
-	if err != nil {
-		return "", err
-	}
+//	_, err := openRepo(repoPath)
+	//if err != nil {
+		//return "", err
+	//}
 	// Create a repo struct from the path
 	crepoPath := C.g_file_new_for_path(C.CString(repoPath))
 	defer C.g_object_unref(crepoPath)
@@ -180,7 +182,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		goto out
 	}
 
-	cerr = nil
 	if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(C.ostree_repo_scan_hardlinks(crepo, cancellable, &cerr))) {
 		goto out
 	}
@@ -207,7 +208,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 			treeType := options.Tree[tree][:eq]
 			treeVal := options.Tree[tree][eq+1:]
 
-			C._g_clear_object((**C.GObject)(objectToCommit.Ptr()))
 			if strings.Compare(treeType, "dir") == 0 {
 				objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
 				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
@@ -215,7 +215,8 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 				}
 			} else if strings.Compare(treeType, "tar") == 0 {
 				objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(treeVal))))
-				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+				if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_archive_to_mtree(crepo, (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
+          fmt.Println("error 1")
 					goto out
 				}
 			} else if strings.Compare(treeType, "ref") == 0 {
@@ -372,7 +373,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 out:
 	if crepo != nil {
 		C.ostree_repo_abort_transaction(crepo, cancellable, nil)
-		C.free(unsafe.Pointer(crepo))
+		//C.free(unsafe.Pointer(crepo))
 	}
 	if modifier != nil {
 		C.ostree_repo_commit_modifier_unref(modifier)
