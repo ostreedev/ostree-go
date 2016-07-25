@@ -102,8 +102,9 @@ func TestCommitTreeSuccess(t *testing.T) {
 
 	//Test commit
 	opts := NewCommitOptions()
-	opts.Subject = "blob"
-	opts.Tree = []string{"tar=" + tarPath}
+  opts.Subject = "blob"
+  opts.Tree = []string{"tar=/tmp/pkg.tar"}
+  opts.TarAutoCreateParents = true
 	branch := "test-branch"
 	ret, err := Commit(repoDir, "", branch, opts)
 	if err != nil {
