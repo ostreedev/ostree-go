@@ -33,7 +33,7 @@ func TestInitSuccess(t *testing.T) {
 	}
 }
 
-func TestInitBareUser (t* testing.T) {
+func TestInitBareUser(t *testing.T) {
 	// Make a base directory in which all of our test data resides
 	baseDir := "/tmp/otbuiltin-test/"
 	err := os.Mkdir(baseDir, 0777)
@@ -51,8 +51,8 @@ func TestInitBareUser (t* testing.T) {
 	}
 
 	// Initialize the repo
-  initOpts := NewInitOptions()
-  initOpts.Mode = "bare-user"
+	initOpts := NewInitOptions()
+	initOpts.Mode = "bare-user"
 	inited, err := Init(repoDir, initOpts)
 	if err != nil {
 		t.Errorf("%s", err)
