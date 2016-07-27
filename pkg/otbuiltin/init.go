@@ -72,7 +72,7 @@ func Init(path string, options initOptions) (bool, error) {
 func parseMode() error {
   if strings.EqualFold(initOpts.Mode, "bare") {
     initOpts.repoMode = C.OSTREE_REPO_MODE_BARE
-  } else if strings.EqualFold(initOpts.Mode, "archive-z2") {
+  } else if strings.EqualFold(initOpts.Mode, "bare-user") {
     initOpts.repoMode = C.OSTREE_REPO_MODE_BARE_USER
   } else if strings.EqualFold(initOpts.Mode, "archive-z2") {
     initOpts.repoMode = C.OSTREE_REPO_MODE_ARCHIVE_Z2
