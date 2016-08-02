@@ -1,3 +1,5 @@
+// Package otbuiltin contains all of the basic commands for creating and
+// interacting with an ostree repository
 package otbuiltin
 
 import (
@@ -18,11 +20,13 @@ type Repo struct {
 	ptr unsafe.Pointer
 }
 
+// Converts an ostree repo struct to its C equivalent
 func (r *Repo) native() *C.OstreeRepo {
 	//return (*C.OstreeRepo)(r.Ptr())
 	return (*C.OstreeRepo)(r.ptr)
 }
 
+// Takes a C ostree repo and converts it to a Go struct
 func repoFromNative(p *C.OstreeRepo) *Repo {
 	if p == nil {
 		return nil
@@ -33,6 +37,7 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
 	return r
 }
 
+// Checks if the repo has been initialized
 func (r *Repo) isInitialized() bool {
 	if r.ptr != nil {
 		return true
@@ -40,6 +45,7 @@ func (r *Repo) isInitialized() bool {
 	return false
 }
 
+// Attempts to open the repo at the given path
 func openRepo(path string) (*Repo, error) {
 	var cerr *C.GError = nil
 	cpath := C.CString(path)
@@ -54,6 +60,8 @@ func openRepo(path string) (*Repo, error) {
 	return repo, nil
 }
 
+// Enable support for tombstone commits, which allow the repo to distinguish between
+// commits that were intentionally deleted and commits that were removed accidentally
 func enableTombstoneCommits(repo *Repo) error {
 	var tombstoneCommits bool
 	var config *C.GKeyFile = C.ostree_repo_get_config(repo.native())

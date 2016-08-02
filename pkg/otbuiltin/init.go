@@ -18,12 +18,14 @@ import "C"
 // Declare variables for options
 var initOpts initOptions
 
+// Contains all of the options for initializing an ostree repo
 type initOptions struct {
 	Mode string // either bare, archive-z2, or bare-user
 
 	repoMode C.OstreeRepoMode
 }
 
+// Instantiates and returns an initOptions struct with default values set
 func NewInitOptions() initOptions {
 	io := initOptions{}
 	io.Mode = "bare"
@@ -31,6 +33,10 @@ func NewInitOptions() initOptions {
 	return io
 }
 
+// Initializes a new ostree repository at the given path.  Returns true
+// if the repo exists at the location, regardless of whether it was initialized
+// by the function or if it already existed.  Returns an error if the repo could
+// not be initialized
 func Init(path string, options initOptions) (bool, error) {
 	initOpts = options
 	err := parseMode()
@@ -69,6 +75,7 @@ func Init(path string, options initOptions) (bool, error) {
 	return true, nil
 }
 
+// Converts the mode string to a C.OSTREE_REPO_MODE enum value
 func parseMode() error {
 	if strings.EqualFold(initOpts.Mode, "bare") {
 		initOpts.repoMode = C.OSTREE_REPO_MODE_BARE

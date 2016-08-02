@@ -19,10 +19,14 @@ import (
 // #include "builtin.go.h"
 import "C"
 
+// Declare global variable to store commitOptions
 var options commitOptions
 
+// Declare a function prototype for being passed into another function
 type handleLineFunc func(string, *glib.GHashTable) error
 
+// Contains all of the options for commmiting to an ostree repo.  Initialize
+// with NewCommitOptions()
 type commitOptions struct {
 	Subject                   string    // One line subject
 	Body                      string    // Full description
@@ -47,6 +51,7 @@ type commitOptions struct {
 	Fsync                     bool      // Specify whether fsync should be used or not.  Default to true
 }
 
+// Initializes a commitOptions struct and sets default values
 func NewCommitOptions() commitOptions {
 	var co commitOptions
 	co.OwnerUID = -1
@@ -55,6 +60,7 @@ func NewCommitOptions() commitOptions {
 	return co
 }
 
+// Commits a directory, specified by commitPath, to an ostree repo as a given branch
 func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, error) {
 	options = opts
 
@@ -383,6 +389,7 @@ out:
 	return "", glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 }
 
+// Parse an array of key value pairs of the format KEY=VALUE and add them to a GVariant
 func parseKeyValueStrings(pairs []string, metadata *C.GVariant) error {
 	builder := C.g_variant_builder_new(C._g_variant_type(C.CString("a{sv}")))
 
@@ -406,6 +413,7 @@ func parseKeyValueStrings(pairs []string, metadata *C.GVariant) error {
 	return nil
 }
 
+// Parse a file linue by line and handle the line with the handleLineFunc
 func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, cancellable *C.GCancellable) error {
 	var contents *C.char
 	var file *glib.GFile
@@ -431,6 +439,7 @@ func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, can
 	return nil
 }
 
+// Handle an individual line from a Statoverride file
 func handleStatOverrideLine(line string, table *glib.GHashTable) error {
 	var space int
 	var modeAdd C.guint
@@ -445,6 +454,7 @@ func handleStatOverrideLine(line string, table *glib.GHashTable) error {
 	return nil
 }
 
+// Handle an individual line from a Skiplist file
 func handleSkipListline(line string, table *glib.GHashTable) error {
 	C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.g_strdup((*C.gchar)(C.CString(line))))
 

@@ -14,8 +14,11 @@ import (
 // #include "builtin.go.h"
 import "C"
 
+// Global variable for options
 var checkoutOpts checkoutOptions
 
+// Contains all of the options for checking commits out of
+// an ostree repo
 type checkoutOptions struct {
 	UserMode         bool   // Do not change file ownership or initialize extended attributes
 	Union            bool   // Keep existing directories and unchanged files, overwriting existing filesystem
@@ -27,10 +30,12 @@ type checkoutOptions struct {
 	FromFile         string // Process many checkouts from the given file
 }
 
+// Instantiates and returns a checkoutOptions struct with default values set
 func NewCheckoutOptions() checkoutOptions {
 	return checkoutOptions{}
 }
 
+// Checks out a commit with the given ref from a repository at the location of repo path to to the destination.  Returns an error if the checkout could not be processed
 func Checkout(repoPath, destination, commit string, opts checkoutOptions) error {
 	checkoutOpts = opts
 
@@ -67,6 +72,7 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 	return nil
 }
 
+// Processes one checkout from the repo
 func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, destination string, cancellable *glib.GCancellable) error {
 	cdest := C.CString(destination)
 	defer C.free(unsafe.Pointer(cdest))
@@ -90,6 +96,7 @@ func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, de
 	return nil
 }
 
+// process many checkouts
 func processManyCheckouts(crepo *C.OstreeRepo, target string, cancellable *glib.GCancellable) error {
 	return nil
 }
