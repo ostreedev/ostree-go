@@ -69,7 +69,11 @@ _guint64_from_be (guint64 val)
   return GUINT64_FROM_BE (val);
 }
 
-
+static gboolean
+_ostree_object_type_is_meta(OstreeObjectType  objtype)
+  {
+    return OSTREE_OBJECT_TYPE_IS_META (objtype);
+  }
 
 // These functions are wrappers for variadic functions since CGO can't parse variadic functions
 static void
