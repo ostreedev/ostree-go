@@ -54,6 +54,57 @@ func openRepo(path string) (*Repo, error) {
 	return repo, nil
 }
 
+type OstreeMutableTree struct {
+  ptr unsafe.Pointer
+}
+
+func (omt *OstreeMutableTree) native() *C.OstreeMutableTree {
+  return (*C.OstreeMutableTree)(omt.ptr)
+}
+
+func mutableTreeFromNative(p *C.OstreeMutableTree) *OstreeMutableTree {
+  if p == nil {
+    return nil
+  }
+
+  omt := &OstreeMutableTree{unsafe.Pointer(p)}
+  return omt
+}
+
+type OstreeRepoCommitModifier struct {
+  ptr unsafe.Pointer
+}
+
+func (ocm *OstreeRepoCommitModifier) native() *C.OstreeRepoCommitModifier {
+  return (*C.OstreeRepoCommitModifier)(ocm.ptr)
+}
+
+func commitModifierFromNative(p *C.OstreeRepoCommitModifier) *OstreeRepoCommitModifier {
+  if p == nil {
+    return nil
+  }
+
+  ocm := &OstreeRepoCommitModifier{unsafe.Pointer(p)}
+  return ocm
+}
+
+type OstreeRepoFile struct {
+  ptr unsafe.Pointer
+}
+
+func (orf *OstreeRepoFile) native() *C.OstreeRepoFile {
+  return (*C.OstreeRepoFile)(orf.ptr)
+}
+
+func repoFileFromNative(p *C.OstreeRepoFile) *OstreeRepoFile {
+  if p == nil {
+    return nil
+  }
+
+  orf := &OstreeRepoFile{unsafe.Pointer(p)}
+  return orf
+}
+
 func enableTombstoneCommits(repo *Repo) error {
 	var tombstoneCommits bool
 	var config *C.GKeyFile = C.ostree_repo_get_config(repo.native())
