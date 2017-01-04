@@ -1,3 +1,5 @@
+// Package otbuiltin contains all of the basic commands for creating and
+// interacting with an ostree repository
 package otbuiltin
 
 import (
@@ -18,11 +20,13 @@ type Repo struct {
 	ptr unsafe.Pointer
 }
 
+// Converts an ostree repo struct to its C equivalent
 func (r *Repo) native() *C.OstreeRepo {
 	//return (*C.OstreeRepo)(r.Ptr())
 	return (*C.OstreeRepo)(r.ptr)
 }
 
+// Takes a C ostree repo and converts it to a Go struct
 func repoFromNative(p *C.OstreeRepo) *Repo {
 	if p == nil {
 		return nil
@@ -33,6 +37,7 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
 	return r
 }
 
+// Checks if the repo has been initialized
 func (r *Repo) isInitialized() bool {
 	if r.ptr != nil {
 		return true
@@ -40,6 +45,7 @@ func (r *Repo) isInitialized() bool {
 	return false
 }
 
+// Attempts to open the repo at the given path
 func openRepo(path string) (*Repo, error) {
 	var cerr *C.GError = nil
 	cpath := C.CString(path)
@@ -55,56 +61,58 @@ func openRepo(path string) (*Repo, error) {
 }
 
 type OstreeMutableTree struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func (omt *OstreeMutableTree) native() *C.OstreeMutableTree {
-  return (*C.OstreeMutableTree)(omt.ptr)
+	return (*C.OstreeMutableTree)(omt.ptr)
 }
 
 func mutableTreeFromNative(p *C.OstreeMutableTree) *OstreeMutableTree {
-  if p == nil {
-    return nil
-  }
+	if p == nil {
+		return nil
+	}
 
-  omt := &OstreeMutableTree{unsafe.Pointer(p)}
-  return omt
+	omt := &OstreeMutableTree{unsafe.Pointer(p)}
+	return omt
 }
 
 type OstreeRepoCommitModifier struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func (ocm *OstreeRepoCommitModifier) native() *C.OstreeRepoCommitModifier {
-  return (*C.OstreeRepoCommitModifier)(ocm.ptr)
+	return (*C.OstreeRepoCommitModifier)(ocm.ptr)
 }
 
 func commitModifierFromNative(p *C.OstreeRepoCommitModifier) *OstreeRepoCommitModifier {
-  if p == nil {
-    return nil
-  }
+	if p == nil {
+		return nil
+	}
 
-  ocm := &OstreeRepoCommitModifier{unsafe.Pointer(p)}
-  return ocm
+	ocm := &OstreeRepoCommitModifier{unsafe.Pointer(p)}
+	return ocm
 }
 
 type OstreeRepoFile struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func (orf *OstreeRepoFile) native() *C.OstreeRepoFile {
-  return (*C.OstreeRepoFile)(orf.ptr)
+	return (*C.OstreeRepoFile)(orf.ptr)
 }
 
 func repoFileFromNative(p *C.OstreeRepoFile) *OstreeRepoFile {
-  if p == nil {
-    return nil
-  }
+	if p == nil {
+		return nil
+	}
 
-  orf := &OstreeRepoFile{unsafe.Pointer(p)}
-  return orf
+	orf := &OstreeRepoFile{unsafe.Pointer(p)}
+	return orf
 }
 
+// Enable support for tombstone commits, which allow the repo to distinguish between
+// commits that were intentionally deleted and commits that were removed accidentally
 func enableTombstoneCommits(repo *Repo) error {
 	var tombstoneCommits bool
 	var config *C.GKeyFile = C.ostree_repo_get_config(repo.native())

@@ -18,8 +18,11 @@ import (
 // #include "builtin.go.h"
 import "C"
 
+// Declare gobal variable for options
 var pruneOpts pruneOptions
 
+// Contains all of the options for pruning an ostree repo.  Use
+// NewPruneOptions() to initialize
 type pruneOptions struct {
 	NoPrune          bool      // Only display unreachable objects; don't delete
 	RefsOnly         bool      // Only compute reachability via refs
@@ -29,12 +32,15 @@ type pruneOptions struct {
 	StaticDeltasOnly int       // Change the behavior of --keep-younger-than and --delete-commit to prune only the static delta files
 }
 
+// Instantiates and returns a pruneOptions struct with default values set
 func NewPruneOptions() pruneOptions {
 	po := new(pruneOptions)
 	po.Depth = -1
 	return *po
 }
 
+// Search for unreachable objects in the repository given by repoPath.  Removes the
+// objects unless pruneOptions.NoPrune is specified
 func Prune(repoPath string, options pruneOptions) (string, error) {
 	pruneOpts = options
 	// attempt to open the repository
@@ -112,6 +118,7 @@ func Prune(repoPath string, options pruneOptions) (string, error) {
 	return buffer.String(), nil
 }
 
+// Delete an unreachable commit from the repo
 func deleteCommit(repo *Repo, commitToDelete string, cancellable *glib.GCancellable) error {
 	var refs *glib.GHashTable
 	var hashIter glib.GHashTableIter
@@ -149,6 +156,8 @@ func deleteCommit(repo *Repo, commitToDelete string, cancellable *glib.GCancella
 	return nil
 }
 
+// Prune commits but keep any younger than the given date regardless of whether they
+// are reachable
 func pruneCommitsKeepYoungerThanDate(repo *Repo, date time.Time, cancellable *glib.GCancellable) error {
 	var objects *glib.GHashTable
 	defer C.free(unsafe.Pointer(objects))
