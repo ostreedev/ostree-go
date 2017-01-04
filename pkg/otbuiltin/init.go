@@ -50,7 +50,7 @@ func Init(path string, options initOptions) (bool, error) {
 	cpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cpath))
 	pathc := C.g_file_new_for_path(cpath)
-	defer C.g_object_unref(pathc)
+	defer C.g_object_unref(C.gpointer(pathc))
 	crepo := C.ostree_repo_new(pathc)
 
 	// If the repo exists in the filesystem, return an error but set exists to true

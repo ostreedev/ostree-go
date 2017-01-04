@@ -47,7 +47,7 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 	defer C.free(unsafe.Pointer(cerr))
 
 	repoPathc := C.g_file_new_for_path(C.CString(repoPath))
-	defer C.g_object_unref(repoPathc)
+	defer C.g_object_unref(C.gpointer(repoPathc))
 	crepo := C.ostree_repo_new(repoPathc)
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
 		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
@@ -79,16 +79,16 @@ func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, de
 	var gerr = glib.NewGError()
 	cerr := (*C.GError)(gerr.Ptr())
 	defer C.free(unsafe.Pointer(cerr))
-	var repoCheckoutOptions C.OstreeRepoCheckoutOptions
+	var repoCheckoutAtOptions C.OstreeRepoCheckoutAtOptions
 
 	if checkoutOpts.UserMode {
-		repoCheckoutOptions.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
+		repoCheckoutAtOptions.mode = C.OSTREE_REPO_CHECKOUT_MODE_USER
 	}
 	if checkoutOpts.Union {
-		repoCheckoutOptions.overwrite_mode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+		repoCheckoutAtOptions.overwrite_mode = C.OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
 	}
 
-	checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_tree_at(crepo, &repoCheckoutOptions, C._at_fdcwd(), cdest, resolvedCommit, nil, &cerr)))
+	checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_at(crepo, &repoCheckoutAtOptions, C._at_fdcwd(), cdest, resolvedCommit, nil, &cerr)))
 	if !checkedOut {
 		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
 	}
