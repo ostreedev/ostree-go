@@ -99,13 +99,13 @@ func resolveParent(repo *repo, parent, orphan, branch string) (string, error) {
 			parent = ""
 		} else {
 			if !glib.GoBool(glib.GBoolean(C.ostree_validate_checksum_string(C.CString(parent), &err))) {
-				return glib.ConvertGError(glib.ToGError(unsafe.Pointer(err)))
+				return generateError(err)
 			}
 		}
 	} else if !orphan {
 		cparent := C.CString(parent)
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), C.CString(branch), C.TRUE, &cparent, &err))) {
-			return glib.ConvertGError(glib.ToGError(unsafe.Pointer(errr)))
+			return generateError(err)
 		}
 		return C.GoString(cparent), nil
 	}
@@ -116,7 +116,7 @@ func prepareTransaction(repo *Repo) error {
 	defer C.g_free(unsafe.Pointer(cerr))
 	C.ostree_repo_prepare_transaction(repo.native(), nil, nil, &cerr)
 	if cerr != nil {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 	return nil
 }
@@ -139,7 +139,7 @@ func writeToMtree(repo *Repo, modifier *C.OstreeRepoCommitModifier, path string,
 	}
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_mtree(repo.native(), mtree.native(), &root, nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 	return nil
 }
@@ -159,7 +159,7 @@ func writePathToMtree(repo *Repo, mtree *OstreeMutableTree, modifier *C.OstreeRe
 	fmt.Println(repo.isInitialized())
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), C.g_file_new_for_path(C.CString(path)), mtree.native(), modifier, nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 	return nil
 }
@@ -194,7 +194,7 @@ func writeTarToMtree(repo *Repo, mtree *OstreeMutableTree, modifier *C.OstreeRep
 	defer C.g_free(unsafe.Pointer(cerr))
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_archive_to_mtree(repo.native(), C.g_file_new_for_path(C.CString(tarFile)), mtree.native(), modifier, (C.gboolean)(glib.GBool(options.TarAutoCreateParents)), nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	return nil
@@ -205,7 +205,7 @@ func writeLayerToMtree(repo *Repo, mtree *OstreeMutableTree, modifier *C.OstreeR
 	defer C.g_free(unsafe.Pointer(cerr))
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_import_oci_image_layer(repo.native(), nil, -1, C.CString(layer), mtree.native(), modifier, nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	return nil
@@ -218,11 +218,11 @@ func writeRefToMtree(repo *Repo, mtree *OstreeMutableTree, modifier *C.OstreeRep
 	var objectToCommit *glib.GFile
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_read_commit(repo.native(), C.CString(ref), (**C.GFile)(objectToCommit.Ptr()), nil, nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree.native(), modifier, nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	return nil
@@ -240,7 +240,7 @@ func writeCommit(repo *Repo, parent, subject, body string, metadata *C.GVariant,
 	cbody := C.CString(body)
 	repoFileRoot := C._ostree_repo_file(root)
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(crepo, cparent, csubject, cbody, metadata, repoFileRoot, &checksum, nil, &cerr))) {
-		return "", glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return "", generateError(cerr)
 	}
 	return C.GoString(checksum), nil
 }

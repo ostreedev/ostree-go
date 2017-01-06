@@ -3,6 +3,9 @@
 package otbuiltin
 
 import (
+	"errors"
+	"fmt"
+	"runtime"
 	"unsafe"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
@@ -55,7 +58,7 @@ func openRepo(path string) (*Repo, error) {
 	repo := repoFromNative(crepo)
 	r := glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, nil, &cerr)))
 	if !r {
-		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return nil, generateError(cerr)
 	}
 	return repo, nil
 }
@@ -124,8 +127,18 @@ func enableTombstoneCommits(repo *Repo) error {
 	if !tombstoneCommits {
 		C.g_key_file_set_boolean(config, (*C.gchar)(C.CString("core")), (*C.gchar)(C.CString("tombstone-commits")), C.TRUE)
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_config(repo.native(), config, &cerr))) {
-			return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+			return generateError(cerr)
 		}
 	}
 	return nil
+}
+
+func generateError(err *C.GError) error {
+	goErr := generateError(err)
+	_, file, line, ok := runtime.Caller(1)
+	if ok {
+		return errors.New(fmt.Sprintf("%s:%d - %s", file, line, goErr))
+	} else {
+		return goErr
+	}
 }

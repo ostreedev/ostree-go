@@ -78,7 +78,7 @@ func Log(repoPath, branch string, options logOptions) ([]LogEntry, error) {
 	}
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), cbranch, C.FALSE, &checksum, &cerr))) {
-		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return nil, generateError(cerr)
 	}
 
 	return logCommit(repo, checksum, false, flags)
@@ -98,7 +98,7 @@ func logCommit(repo *Repo, checksum *C.char, isRecursive bool, flags OstreeDumpF
 		if isRecursive && glib.GoBool(glib.GBoolean(C.g_error_matches(cerr, C.g_io_error_quark(), C.G_IO_ERROR_NOT_FOUND))) {
 			return nil, nil
 		}
-		return entries, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return entries, generateError(cerr)
 	}
 
 	nextLogEntry := dumpLogObject(C.OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, flags)
