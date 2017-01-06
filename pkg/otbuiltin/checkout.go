@@ -50,7 +50,7 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 	defer C.g_object_unref(C.gpointer(repoPathc))
 	crepo := C.ostree_repo_new(repoPathc)
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	if strings.Compare(checkoutOpts.FromFile, "") != 0 {
@@ -62,7 +62,7 @@ func Checkout(repoPath, destination, commit string, opts checkoutOptions) error 
 		var resolvedCommit *C.char
 		defer C.free(unsafe.Pointer(resolvedCommit))
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(crepo, ccommit, C.FALSE, &resolvedCommit, &cerr))) {
-			return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+			return generateError(cerr)
 		}
 		err := processOneCheckout(crepo, resolvedCommit, checkoutOpts.Subpath, destination, cancellable)
 		if err != nil {
@@ -90,7 +90,7 @@ func processOneCheckout(crepo *C.OstreeRepo, resolvedCommit *C.char, subpath, de
 
 	checkedOut := glib.GoBool(glib.GBoolean(C.ostree_repo_checkout_at(crepo, &repoCheckoutAtOptions, C._at_fdcwd(), cdest, resolvedCommit, nil, &cerr)))
 	if !checkedOut {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	return nil
