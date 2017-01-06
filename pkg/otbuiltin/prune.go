@@ -59,7 +59,7 @@ func Prune(repoPath string, options pruneOptions) (string, error) {
 	var cancellable *glib.GCancellable
 
 	if !pruneOpts.NoPrune && !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
-		return "", glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return "", generateError(cerr)
 	}
 
 	cerr = nil
@@ -70,7 +70,7 @@ func Prune(repoPath string, options pruneOptions) (string, error) {
 
 		if pruneOpts.StaticDeltasOnly > 0 {
 			if glib.GoBool(glib.GBoolean(C.ostree_repo_prune_static_deltas(repo.native(), C.CString(pruneOpts.DeleteCommit), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-				return "", glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+				return "", generateError(cerr)
 			}
 		} else if err = deleteCommit(repo, pruneOpts.DeleteCommit, cancellable); err != nil {
 			return "", err
@@ -128,7 +128,7 @@ func deleteCommit(repo *Repo, commitToDelete string, cancellable *glib.GCancella
 	defer C.free(unsafe.Pointer(cerr))
 
 	if glib.GoBool(glib.GBoolean(C.ostree_repo_list_refs(repo.native(), nil, (**C.GHashTable)(refs.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	C.g_hash_table_iter_init((*C.GHashTableIter)(hashIter.Ptr()), (*C.GHashTable)(refs.Ptr()))
@@ -150,7 +150,7 @@ func deleteCommit(repo *Repo, commitToDelete string, cancellable *glib.GCancella
 	}
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_delete_object(repo.native(), C.OSTREE_OBJECT_TYPE_COMMIT, C.CString(commitToDelete), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	return nil
@@ -174,7 +174,7 @@ func pruneCommitsKeepYoungerThanDate(repo *Repo, date time.Time, cancellable *gl
 	}
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_list_objects(repo.native(), C.OSTREE_REPO_LIST_OBJECTS_ALL, (**C.GHashTable)(objects.Ptr()), (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	C.g_hash_table_iter_init((*C.GHashTableIter)(hashIter.Ptr()), (*C.GHashTable)(objects.Ptr()))
@@ -195,7 +195,7 @@ func pruneCommitsKeepYoungerThanDate(repo *Repo, date time.Time, cancellable *gl
 
 		cerr = nil
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_load_variant(repo.native(), C.OSTREE_OBJECT_TYPE_COMMIT, checksum, (**C.GVariant)(commit.Ptr()), &cerr))) {
-			return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+			return generateError(cerr)
 		}
 
 		commitTimestamp = (uint64)(C.ostree_commit_get_timestamp((*C.GVariant)(commit.Ptr())))
@@ -203,11 +203,11 @@ func pruneCommitsKeepYoungerThanDate(repo *Repo, date time.Time, cancellable *gl
 			cerr = nil
 			if pruneOpts.StaticDeltasOnly != 0 {
 				if !glib.GoBool(glib.GBoolean(C.ostree_repo_prune_static_deltas(repo.native(), checksum, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-					return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+					return generateError(cerr)
 				}
 			} else {
 				if !glib.GoBool(glib.GBoolean(C.ostree_repo_delete_object(repo.native(), C.OSTREE_OBJECT_TYPE_COMMIT, checksum, (*C.GCancellable)(cancellable.Ptr()), &cerr))) {
-					return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+					return generateError(cerr)
 				}
 			}
 		}

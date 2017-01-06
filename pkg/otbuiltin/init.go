@@ -60,17 +60,17 @@ func Init(path string, options initOptions) (bool, error) {
 	  err = errors.New("repository already exists")
 	  return true, err
 	} else if !success {
-	  return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+	  return false, generateError(cerr)
 	}*/
 
 	cerr = nil
 	created := glib.GoBool(glib.GBoolean(C.ostree_repo_create(crepo, initOpts.repoMode, nil, &cerr)))
 	if !created {
-		errString := glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr))).Error()
+		errString := generateError(cerr).Error()
 		if strings.Contains(errString, "File exists") {
-			return true, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+			return true, generateError(cerr)
 		}
-		return false, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return false, generateError(cerr)
 	}
 	return true, nil
 }

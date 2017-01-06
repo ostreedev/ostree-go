@@ -386,7 +386,7 @@ out:
 	if err != nil {
 		return "", err
 	}
-	return "", glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+	return "", generateError(cerr)
 }
 
 // Parse an array of key value pairs of the format KEY=VALUE and add them to a GVariant
@@ -423,7 +423,7 @@ func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, can
 
 	file = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(C.CString(path))))
 	if !glib.GoBool(glib.GBoolean(C.g_file_load_contents((*C.GFile)(file.Ptr()), cancellable, &contents, nil, nil, &cerr))) {
-		return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return generateError(cerr)
 	}
 
 	lines = strings.Split(C.GoString(contents), "\n")
@@ -433,7 +433,7 @@ func parseFileByLine(path string, fn handleLineFunc, table *glib.GHashTable, can
 		}
 
 		if err := fn(lines[line], table); err != nil {
-			return glib.ConvertGError(glib.ToGError((unsafe.Pointer(cerr))))
+			return generateError(cerr)
 		}
 	}
 	return nil
