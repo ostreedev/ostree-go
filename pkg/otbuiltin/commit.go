@@ -65,6 +65,12 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		return "", err
 	}
 
+	var cerr *C.GError
+	defer C.g_free(C.gpointer(cerr))
+	if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
+		generateError(cerr)
+	}
+
 	if strings.Compare(branch, "") == 0 && !opts.Orphan {
 		return "", errors.New("A branch must be specified or set opts.Orphan=true: branch: " + branch)
 	}
