@@ -115,7 +115,7 @@ func resolveParent(repo *Repo, parent, branch string, orphan bool) (string, erro
 		}
 		return C.GoString(cparent), nil
 	}
-	return "", errors.New("either parent must be specified or orphan must be set to true")
+	return "", nil
 }
 
 func prepareTransaction(repo *Repo) error {
@@ -243,6 +243,10 @@ func writeCommit(repo *Repo, parent, subject, body string, metadata *C.GVariant,
 
 	crepo := repo.native()
 	cparent := C.CString(parent)
+	// TODO: implement a function in builtin.go that converts Go strings to C strings, returning nil if the string is empty
+	if len(parent) == 0 {
+		cparent = nil
+	}
 	csubject := C.CString(subject)
 	cbody := C.CString(body)
 	repoFileRoot := C._ostree_repo_file(root)
