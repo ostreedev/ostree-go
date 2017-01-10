@@ -1,10 +1,10 @@
 package otbuiltin
 
 import (
+	"fmt"
 	"strings"
 	"time"
 	"unsafe"
-  "fmt"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
 )
@@ -16,10 +16,13 @@ import (
 // #include "builtin.go.h"
 import "C"
 
+// Declare variables for options
 var logOpts logOptions
 
+// Set the format of the strings in the log
 const formatString = "2006-01-02 03:04;05 -0700"
 
+// Struct for the various pieces of data in a log entry
 type LogEntry struct {
 	Checksum  []byte
 	Variant   []byte
@@ -28,11 +31,12 @@ type LogEntry struct {
 	Body      string
 }
 
+// Convert the log entry to a string
 func (l LogEntry) String() string {
-  if len(l.Variant) == 0 {
-    return fmt.Sprintf("%s\n%s\n\n\t%s\n\n\t%s\n\n", l.Checksum, l.Timestamp, l.Subject, l.Body)
-  }
-  return fmt.Sprintf("%s\n%s\n\n", l.Checksum, l.Variant)
+	if len(l.Variant) == 0 {
+		return fmt.Sprintf("%s\n%s\n\n\t%s\n\n\t%s\n\n", l.Checksum, l.Timestamp, l.Subject, l.Body)
+	}
+	return fmt.Sprintf("%s\n%s\n\n", l.Checksum, l.Variant)
 }
 
 type OstreeDumpFlags uint
@@ -42,14 +46,18 @@ const (
 	OSTREE_DUMP_RAW  OstreeDumpFlags = 1 << iota
 )
 
+// Contains all of the options for initializing an ostree repo
 type logOptions struct {
 	Raw bool // Show raw variant data
 }
 
+//Instantiates and returns a logOptions struct with default values set
 func NewLogOptions() logOptions {
 	return logOptions{}
 }
 
+// Show the logs of a branch starting with a given commit or ref.  Returns a
+// slice of log entries on success and an error otherwise
 func Log(repoPath, branch string, options logOptions) ([]LogEntry, error) {
 	// attempt to open the repository
 	repo, err := openRepo(repoPath)
@@ -70,7 +78,7 @@ func Log(repoPath, branch string, options logOptions) ([]LogEntry, error) {
 	}
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), cbranch, C.FALSE, &checksum, &cerr))) {
-		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return nil, generateError(cerr)
 	}
 
 	return logCommit(repo, checksum, false, flags)
@@ -90,7 +98,7 @@ func logCommit(repo *Repo, checksum *C.char, isRecursive bool, flags OstreeDumpF
 		if isRecursive && glib.GoBool(glib.GBoolean(C.g_error_matches(cerr, C.g_io_error_quark(), C.G_IO_ERROR_NOT_FOUND))) {
 			return nil, nil
 		}
-		return entries, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return entries, generateError(cerr)
 	}
 
 	nextLogEntry := dumpLogObject(C.OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, flags)

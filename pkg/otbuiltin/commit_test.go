@@ -1,7 +1,6 @@
 package otbuiltin
 
 import (
-<<<<<<< HEAD
 	"fmt"
 	"os"
 	"testing"
@@ -171,3 +170,4 @@ func TestCommitTreeParentSuccess(t *testing.T) {
 	} else {
 		fmt.Println(ret)
 	}
+}

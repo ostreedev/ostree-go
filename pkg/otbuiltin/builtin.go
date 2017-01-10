@@ -1,6 +1,11 @@
+// Package otbuiltin contains all of the basic commands for creating and
+// interacting with an ostree repository
 package otbuiltin
 
 import (
+	"errors"
+	"fmt"
+	"runtime"
 	"unsafe"
 
 	glib "github.com/14rcole/ostree-go/pkg/glibobject"
@@ -18,11 +23,13 @@ type Repo struct {
 	ptr unsafe.Pointer
 }
 
+// Converts an ostree repo struct to its C equivalent
 func (r *Repo) native() *C.OstreeRepo {
 	//return (*C.OstreeRepo)(r.Ptr())
 	return (*C.OstreeRepo)(r.ptr)
 }
 
+// Takes a C ostree repo and converts it to a Go struct
 func repoFromNative(p *C.OstreeRepo) *Repo {
 	if p == nil {
 		return nil
@@ -33,6 +40,7 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
 	return r
 }
 
+// Checks if the repo has been initialized
 func (r *Repo) isInitialized() bool {
 	if r.ptr != nil {
 		return true
@@ -40,6 +48,7 @@ func (r *Repo) isInitialized() bool {
 	return false
 }
 
+// Attempts to open the repo at the given path
 func openRepo(path string) (*Repo, error) {
 	var cerr *C.GError = nil
 	cpath := C.CString(path)
@@ -49,62 +58,64 @@ func openRepo(path string) (*Repo, error) {
 	repo := repoFromNative(crepo)
 	r := glib.GoBool(glib.GBoolean(C.ostree_repo_open(crepo, nil, &cerr)))
 	if !r {
-		return nil, glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+		return nil, generateError(cerr)
 	}
 	return repo, nil
 }
 
 type OstreeMutableTree struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func (omt *OstreeMutableTree) native() *C.OstreeMutableTree {
-  return (*C.OstreeMutableTree)(omt.ptr)
+	return (*C.OstreeMutableTree)(omt.ptr)
 }
 
 func mutableTreeFromNative(p *C.OstreeMutableTree) *OstreeMutableTree {
-  if p == nil {
-    return nil
-  }
+	if p == nil {
+		return nil
+	}
 
-  omt := &OstreeMutableTree{unsafe.Pointer(p)}
-  return omt
+	omt := &OstreeMutableTree{unsafe.Pointer(p)}
+	return omt
 }
 
 type OstreeRepoCommitModifier struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func (ocm *OstreeRepoCommitModifier) native() *C.OstreeRepoCommitModifier {
-  return (*C.OstreeRepoCommitModifier)(ocm.ptr)
+	return (*C.OstreeRepoCommitModifier)(ocm.ptr)
 }
 
 func commitModifierFromNative(p *C.OstreeRepoCommitModifier) *OstreeRepoCommitModifier {
-  if p == nil {
-    return nil
-  }
+	if p == nil {
+		return nil
+	}
 
-  ocm := &OstreeRepoCommitModifier{unsafe.Pointer(p)}
-  return ocm
+	ocm := &OstreeRepoCommitModifier{unsafe.Pointer(p)}
+	return ocm
 }
 
 type OstreeRepoFile struct {
-  ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func (orf *OstreeRepoFile) native() *C.OstreeRepoFile {
-  return (*C.OstreeRepoFile)(orf.ptr)
+	return (*C.OstreeRepoFile)(orf.ptr)
 }
 
 func repoFileFromNative(p *C.OstreeRepoFile) *OstreeRepoFile {
-  if p == nil {
-    return nil
-  }
+	if p == nil {
+		return nil
+	}
 
-  orf := &OstreeRepoFile{unsafe.Pointer(p)}
-  return orf
+	orf := &OstreeRepoFile{unsafe.Pointer(p)}
+	return orf
 }
 
+// Enable support for tombstone commits, which allow the repo to distinguish between
+// commits that were intentionally deleted and commits that were removed accidentally
 func enableTombstoneCommits(repo *Repo) error {
 	var tombstoneCommits bool
 	var config *C.GKeyFile = C.ostree_repo_get_config(repo.native())
@@ -116,8 +127,18 @@ func enableTombstoneCommits(repo *Repo) error {
 	if !tombstoneCommits {
 		C.g_key_file_set_boolean(config, (*C.gchar)(C.CString("core")), (*C.gchar)(C.CString("tombstone-commits")), C.TRUE)
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_config(repo.native(), config, &cerr))) {
-			return glib.ConvertGError(glib.ToGError(unsafe.Pointer(cerr)))
+			return generateError(cerr)
 		}
 	}
 	return nil
+}
+
+func generateError(err *C.GError) error {
+	goErr := glib.ConvertGError(glib.ToGError(unsafe.Pointer(err)))
+	_, file, line, ok := runtime.Caller(1)
+	if ok {
+		return errors.New(fmt.Sprintf("%s:%d - %s", file, line, goErr))
+	} else {
+		return goErr
+	}
 }
