@@ -2,7 +2,6 @@ package otbuiltin
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -75,7 +74,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		return "", errors.New("A branch must be specified or set opts.Orphan=true: branch: " + branch)
 	}
 
-	_, err = resolveParent(repo, opts.Parent, branch, opts.Orphan)
+	rev, err := resolveParent(repo, opts.Parent, branch, opts.Orphan)
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +93,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	}
 
 	var metadata *C.GVariant
-	return writeCommit(repo, options.Parent, options.Subject, options.Body, metadata, root)
+	return writeCommit(repo, rev, options.Subject, options.Body, metadata, root)
 }
 
 func resolveParent(repo *Repo, parent, branch string, orphan bool) (string, error) {
@@ -163,7 +162,6 @@ func writeCwdToMtree(repo *Repo, mtree *OstreeMutableTree, modifier *C.OstreeRep
 func writePathToMtree(repo *Repo, mtree *OstreeMutableTree, modifier *C.OstreeRepoCommitModifier, path string) error {
 	var cerr *C.GError
 	defer C.g_free(C.gpointer(cerr))
-	fmt.Println(repo.isInitialized())
 
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), C.g_file_new_for_path(C.CString(path)), mtree.native(), modifier, nil, &cerr))) {
 		return generateError(cerr)
