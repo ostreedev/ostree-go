@@ -7,7 +7,7 @@ package ostree
 import (
        "unsafe"
 
-      "github.com/14rcole/ostree-go/pkg/glibobject"
+      "github.com/ostreedev/ostree-go/pkg/glibobject"
 )
 
 // #cgo pkg-config: ostree-1
