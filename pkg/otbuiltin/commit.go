@@ -140,7 +140,12 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 	var cerr *C.GError
 	defer C.free(unsafe.Pointer(cerr))
 	var metadata *C.GVariant = nil
-	defer C.free(unsafe.Pointer(metadata))
+	defer func(){
+		if metadata != nil {
+			defer C.g_variant_unref(metadata)
+		}
+	}()
+
 	var detachedMetadata *C.GVariant = nil
 	defer C.free(unsafe.Pointer(detachedMetadata))
 	var mtree *C.OstreeMutableTree
@@ -192,14 +197,14 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 	}
 
 	if options.AddMetadataString != nil {
-		err := parseKeyValueStrings(options.AddMetadataString, metadata)
+		metadata, err = parseKeyValueStrings(options.AddMetadataString)
 		if err != nil {
 			goto out
 		}
 	}
 
 	if options.AddDetachedMetadataString != nil {
-		err := parseKeyValueStrings(options.AddDetachedMetadataString, detachedMetadata)
+		_, err := parseKeyValueStrings(options.AddDetachedMetadataString)
 		if err != nil {
 			goto out
 		}
@@ -359,8 +364,8 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 			C.g_date_time_unref(now)
 
 			cerr = nil
-			if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(repo.native(), cparent, csubject, cbody,
-				metadata, C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr))) {
+			ret := C.ostree_repo_write_commit(repo.native(), cparent, csubject, cbody, metadata, C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr)
+			if !glib.GoBool(glib.GBoolean(ret)) {
 				goto out
 			}
 		} else {
@@ -411,27 +416,29 @@ out:
 }
 
 // Parse an array of key value pairs of the format KEY=VALUE and add them to a GVariant
-func parseKeyValueStrings(pairs []string, metadata *C.GVariant) error {
+func parseKeyValueStrings(pairs []string) (*C.GVariant, error) {
 	builder := C.g_variant_builder_new(C._g_variant_type(C.CString("a{sv}")))
+	defer C.g_variant_builder_unref(builder)
 
 	for iter := range pairs {
 		index := strings.Index(pairs[iter], "=")
-		if index >= 0 {
+		if index <= 0 {
 			var buffer bytes.Buffer
 			buffer.WriteString("Missing '=' in KEY=VALUE metadata '%s'")
 			buffer.WriteString(pairs[iter])
-			return errors.New(buffer.String())
+			return nil, errors.New(buffer.String())
 		}
 
-		key := pairs[iter][:index]
-		value := pairs[iter][index+1:]
-		C._g_variant_builder_add_twoargs(builder, (*C.gchar)(C.CString("{sv}")), C.CString(key), C.CString(value))
+		key := C.CString(pairs[iter][:index])
+		value := C.CString(pairs[iter][index+1:])
+
+		valueVariant := C.g_variant_new_string((*C.gchar)(value))
+
+		C._g_variant_builder_add_twoargs(builder, C.CString("{sv}"), key, valueVariant)
 	}
 
-	metadata = C.g_variant_builder_end(builder)
-	C.g_variant_ref_sink(metadata)
-
-	return nil
+	metadata := C.g_variant_builder_end(builder)
+	return C.g_variant_ref_sink(metadata), nil
 }
 
 // Parse a file linue by line and handle the line with the handleLineFunc
