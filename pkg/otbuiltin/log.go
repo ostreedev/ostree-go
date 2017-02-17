@@ -60,7 +60,7 @@ func NewLogOptions() logOptions {
 // slice of log entries on success and an error otherwise
 func Log(repoPath, branch string, options logOptions) ([]LogEntry, error) {
 	// attempt to open the repository
-	repo, err := openRepo(repoPath)
+	repo, err := OpenRepo(repoPath)
 	if err != nil {
 		return nil, err
 	}

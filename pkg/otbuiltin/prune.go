@@ -44,7 +44,7 @@ func NewPruneOptions() pruneOptions {
 func Prune(repoPath string, options pruneOptions) (string, error) {
 	pruneOpts = options
 	// attempt to open the repository
-	repo, err := openRepo(repoPath)
+	repo, err := OpenRepo(repoPath)
 	if err != nil {
 		return "", err
 	}

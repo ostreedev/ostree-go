@@ -49,7 +49,7 @@ func (r *Repo) isInitialized() bool {
 }
 
 // Attempts to open the repo at the given path
-func openRepo(path string) (*Repo, error) {
+func OpenRepo(path string) (*Repo, error) {
 	var cerr *C.GError = nil
 	cpath := C.CString(path)
 	pathc := C.g_file_new_for_path(cpath)

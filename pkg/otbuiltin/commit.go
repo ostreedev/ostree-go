@@ -101,8 +101,8 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	cparent := C.CString(options.Parent)
 	defer C.free(unsafe.Pointer(cparent))
 
-	// Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
-	repo, err := openRepo(repoPath)
+	// Open Repo function causes as Segfault.  Either OpenRepo or repo.native() has something wrong with it
+	repo, err := OpenRepo(repoPath)
 	if err != nil {
 		return "", err
 	}
