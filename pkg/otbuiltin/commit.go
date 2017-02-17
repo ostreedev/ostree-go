@@ -66,7 +66,7 @@ type OstreeRepoTransactionStats struct {
 	content_bytes_written uint64
 }
 
-func PrepareTransaction(repo *Repo) (bool, error) {
+func (repo *Repo) PrepareTransaction() (bool, error) {
 	var cerr *C.GError = nil
 	var resume C.gboolean
 
@@ -77,7 +77,7 @@ func PrepareTransaction(repo *Repo) (bool, error) {
 	return glib.GoBool(glib.GBoolean(resume)), nil
 }
 
-func CommitTransaction(repo *Repo) (*OstreeRepoTransactionStats, error) {
+func (repo *Repo) CommitTransaction() (*OstreeRepoTransactionStats, error) {
 	var cerr *C.GError = nil
 	var stats OstreeRepoTransactionStats = OstreeRepoTransactionStats{}
 	statsPtr := (*C.OstreeRepoTransactionStats)(unsafe.Pointer(&stats))
@@ -88,7 +88,7 @@ func CommitTransaction(repo *Repo) (*OstreeRepoTransactionStats, error) {
 	return &stats, nil
 }
 
-func TransactionSetRef(repo *Repo, remote string, ref string, checksum string) {
+func (repo *Repo) TransactionSetRef(remote string, ref string, checksum string) {
 	var cRemote *C.char = nil
 	var cRef *C.char = nil
 	var cChecksum *C.char = nil
@@ -105,7 +105,7 @@ func TransactionSetRef(repo *Repo, remote string, ref string, checksum string) {
 	C.ostree_repo_transaction_set_ref(repo.native(), cRemote, cRef, cChecksum)
 }
 
-func AbortTransaction(repo *Repo) error {
+func (repo *Repo) AbortTransaction() error {
 	var cerr *C.GError = nil
 	r := glib.GoBool(glib.GBoolean(C.ostree_repo_abort_transaction(repo.native(), nil, &cerr)))
 	if !r {
@@ -114,7 +114,7 @@ func AbortTransaction(repo *Repo) error {
 	return nil
 }
 
-func RegenerateSummary(repo *Repo) error {
+func (repo *Repo) RegenerateSummary() error {
 	var cerr *C.GError = nil
 	r := glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(repo.native(), nil, nil, &cerr)))
 	if !r {
@@ -124,7 +124,7 @@ func RegenerateSummary(repo *Repo) error {
 }
 
 // Commits a directory, specified by commitPath, to an ostree repo as a given branch
-func Commit(repo *Repo, commitPath, branch string, opts commitOptions) (string, error) {
+func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string, error) {
 	options = opts
 
 	var err error
