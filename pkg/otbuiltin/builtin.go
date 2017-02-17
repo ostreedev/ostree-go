@@ -83,7 +83,7 @@ func enableTombstoneCommits(repo *Repo) error {
 }
 
 func generateError(err *C.GError) error {
-	goErr := generateError(err)
+	goErr := glib.ConvertGError(glib.ToGError(unsafe.Pointer(err)))
 	_, file, line, ok := runtime.Caller(1)
 	if ok {
 		return errors.New(fmt.Sprintf("%s:%d - %s", file, line, goErr))
