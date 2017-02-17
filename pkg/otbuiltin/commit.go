@@ -60,6 +60,63 @@ func NewCommitOptions() commitOptions {
 	return co
 }
 
+type OstreeRepoTransactionStats struct {
+	metadata_objects_total int32
+	metadata_objects_written int32
+	content_objects_total int32
+	content_objects_written int32
+	content_bytes_written uint64
+}
+
+func PrepareTransaction(repo *Repo) (bool, error) {
+	var cerr *C.GError = nil
+	var resume C.gboolean
+
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(repo.native(), &resume, nil, &cerr)))
+	if !r {
+		return false, generateError(cerr)
+	}
+	return glib.GoBool(glib.GBoolean(resume)), nil
+}
+
+func CommitTransaction(repo *Repo) (*OstreeRepoTransactionStats, error) {
+	var cerr *C.GError = nil
+	var stats OstreeRepoTransactionStats = OstreeRepoTransactionStats{}
+	statsPtr := (*C.OstreeRepoTransactionStats)(unsafe.Pointer(&stats))
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(repo.native(), statsPtr, nil, &cerr)))
+	if !r {
+		return nil, generateError(cerr)
+	}
+	return &stats, nil
+}
+
+func TransactionSetRef(repo *Repo, remote string, ref string, checksum string) {
+	var cRemote *C.char = nil
+	var cRef *C.char = nil
+	var cChecksum *C.char = nil
+
+	if remote != "" {
+		cRemote = C.CString(remote)
+	}
+	if ref != "" {
+		cRef = C.CString(ref)
+	}
+	if checksum != "" {
+		cChecksum = C.CString(checksum)
+	}
+	C.ostree_repo_transaction_set_ref(repo.native(), cRemote, cRef, cChecksum)
+}
+
+
+func AbortTransaction(repo *Repo) error {
+	var cerr *C.GError = nil
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_abort_transaction(repo.native(), nil, &cerr)))
+	if !r {
+		return generateError(cerr)
+	}
+	return nil
+}
+
 // Commits a directory, specified by commitPath, to an ostree repo as a given branch
 func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, error) {
 	options = opts
