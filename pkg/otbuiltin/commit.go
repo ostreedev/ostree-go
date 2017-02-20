@@ -188,7 +188,7 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 		}
 	}
 
-	// If the user provided a skilist file
+	// If the user provided a skiplist file
 	if strings.Compare(options.SkipListFile, "") != 0 {
 		skipList = glib.ToGHashTable(unsafe.Pointer(C._g_hash_table_new_full()))
 		if err = parseFileByLine(options.SkipListFile, handleSkipListline, skipList, cancellable); err != nil {
