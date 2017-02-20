@@ -168,14 +168,6 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 	cparent := C.CString(options.Parent)
 	defer C.free(unsafe.Pointer(cparent))
 
-	//Create a repo struct from the path
-	/*repo.native()Path := C.g_file_new_for_path(C.CString(repoPath))
-	defer C.g_object_unref(repo.native()Path)
-	repo.native() := C.ostree_repo_new(repo.native()Path)
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(repo.native(), cancellable, &cerr))) {
-		goto out
-	}*/
-
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
 		goto out
 	}
