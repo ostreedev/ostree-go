@@ -89,9 +89,9 @@ _g_set_error_onearg (GError *err,
 
 static void
 _g_variant_builder_add_twoargs (GVariantBuilder*     builder,
-                                const gchar   *format_string,
+                                const char    *format_string,
                                 char          *arg1,
-                                char          *arg2)
+                                GVariant      *arg2)
 {
   g_variant_builder_add(builder, format_string, arg1, arg2);
 }

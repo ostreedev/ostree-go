@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	glib "github.com/14rcole/ostree-go/pkg/glibobject"
+	glib "github.com/ostreedev/ostree-go/pkg/glibobject"
 )
 
 // #cgo pkg-config: ostree-1
@@ -49,7 +49,7 @@ func (r *Repo) isInitialized() bool {
 }
 
 // Attempts to open the repo at the given path
-func openRepo(path string) (*Repo, error) {
+func OpenRepo(path string) (*Repo, error) {
 	var cerr *C.GError = nil
 	cpath := C.CString(path)
 	pathc := C.g_file_new_for_path(cpath)
@@ -83,7 +83,7 @@ func enableTombstoneCommits(repo *Repo) error {
 }
 
 func generateError(err *C.GError) error {
-	goErr := generateError(err)
+	goErr := glib.ConvertGError(glib.ToGError(unsafe.Pointer(err)))
 	_, file, line, ok := runtime.Caller(1)
 	if ok {
 		return errors.New(fmt.Sprintf("%s:%d - %s", file, line, goErr))

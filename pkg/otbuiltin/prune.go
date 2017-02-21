@@ -8,7 +8,7 @@ import (
 	"time"
 	"unsafe"
 
-	glib "github.com/14rcole/ostree-go/pkg/glibobject"
+	glib "github.com/ostreedev/ostree-go/pkg/glibobject"
 )
 
 // #cgo pkg-config: ostree-1
@@ -44,7 +44,7 @@ func NewPruneOptions() pruneOptions {
 func Prune(repoPath string, options pruneOptions) (string, error) {
 	pruneOpts = options
 	// attempt to open the repository
-	repo, err := openRepo(repoPath)
+	repo, err := OpenRepo(repoPath)
 	if err != nil {
 		return "", err
 	}

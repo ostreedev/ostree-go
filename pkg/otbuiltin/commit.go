@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 	"unsafe"
 
-	glib "github.com/14rcole/ostree-go/pkg/glibobject"
+	glib "github.com/ostreedev/ostree-go/pkg/glibobject"
 )
 
 // #cgo pkg-config: ostree-1
@@ -42,7 +41,6 @@ type commitOptions struct {
 	SkipIfUnchanged           bool      // If the contents are unchanged from a previous commit, do nothing
 	StatOverrideFile          string    // File containing list of modifications to make permissions
 	SkipListFile              string    // File containing list of file paths to skip
-	TableOutput               bool      // Output more information in a KEY: VALUE format
 	GenerateSizes             bool      // Generate size information along with commit metadata
 	GpgSign                   []string  // GPG Key ID with which to sign the commit (if you have GPGME - GNU Privacy Guard Made Easy)
 	GpgHomedir                string    // GPG home directory to use when looking for keyrings (if you have GPGME - GNU Privacy Guard Made Easy)
@@ -60,25 +58,94 @@ func NewCommitOptions() commitOptions {
 	return co
 }
 
+type OstreeRepoTransactionStats struct {
+	metadata_objects_total int32
+	metadata_objects_written int32
+	content_objects_total int32
+	content_objects_written int32
+	content_bytes_written uint64
+}
+
+func (repo *Repo) PrepareTransaction() (bool, error) {
+	var cerr *C.GError = nil
+	var resume C.gboolean
+
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(repo.native(), &resume, nil, &cerr)))
+	if !r {
+		return false, generateError(cerr)
+	}
+	return glib.GoBool(glib.GBoolean(resume)), nil
+}
+
+func (repo *Repo) CommitTransaction() (*OstreeRepoTransactionStats, error) {
+	var cerr *C.GError = nil
+	var stats OstreeRepoTransactionStats = OstreeRepoTransactionStats{}
+	statsPtr := (*C.OstreeRepoTransactionStats)(unsafe.Pointer(&stats))
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(repo.native(), statsPtr, nil, &cerr)))
+	if !r {
+		return nil, generateError(cerr)
+	}
+	return &stats, nil
+}
+
+func (repo *Repo) TransactionSetRef(remote string, ref string, checksum string) {
+	var cRemote *C.char = nil
+	var cRef *C.char = nil
+	var cChecksum *C.char = nil
+
+	if remote != "" {
+		cRemote = C.CString(remote)
+	}
+	if ref != "" {
+		cRef = C.CString(ref)
+	}
+	if checksum != "" {
+		cChecksum = C.CString(checksum)
+	}
+	C.ostree_repo_transaction_set_ref(repo.native(), cRemote, cRef, cChecksum)
+}
+
+func (repo *Repo) AbortTransaction() error {
+	var cerr *C.GError = nil
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_abort_transaction(repo.native(), nil, &cerr)))
+	if !r {
+		return generateError(cerr)
+	}
+	return nil
+}
+
+func (repo *Repo) RegenerateSummary() error {
+	var cerr *C.GError = nil
+	r := glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(repo.native(), nil, nil, &cerr)))
+	if !r {
+		return generateError(cerr)
+	}
+	return nil
+}
+
 // Commits a directory, specified by commitPath, to an ostree repo as a given branch
-func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, error) {
+func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string, error) {
 	options = opts
 
+	var err error
 	var modeAdds *glib.GHashTable
 	var skipList *glib.GHashTable
 	var objectToCommit *glib.GFile
 	var skipCommit bool = false
-	var ret string
 	var ccommitChecksum *C.char
 	defer C.free(unsafe.Pointer(ccommitChecksum))
 	var flags C.OstreeRepoCommitModifierFlags = 0
-	var stats C.OstreeRepoTransactionStats
 	var filter_data C.CommitFilterData
 
 	var cerr *C.GError
 	defer C.free(unsafe.Pointer(cerr))
 	var metadata *C.GVariant = nil
-	defer C.free(unsafe.Pointer(metadata))
+	defer func(){
+		if metadata != nil {
+			defer C.g_variant_unref(metadata)
+		}
+	}()
+
 	var detachedMetadata *C.GVariant = nil
 	defer C.free(unsafe.Pointer(detachedMetadata))
 	var mtree *C.OstreeMutableTree
@@ -101,19 +168,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	cparent := C.CString(options.Parent)
 	defer C.free(unsafe.Pointer(cparent))
 
-	// Open Repo function causes as Segfault.  Either openRepo or repo.native() has something wrong with it
-	repo, err := openRepo(repoPath)
-	if err != nil {
-		return "", err
-	}
-	//Create a repo struct from the path
-	/*repo.native()Path := C.g_file_new_for_path(C.CString(repoPath))
-	defer C.g_object_unref(repo.native()Path)
-	repo.native() := C.ostree_repo_new(repo.native()Path)
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_open(repo.native(), cancellable, &cerr))) {
-		goto out
-	}*/
-
 	if !glib.GoBool(glib.GBoolean(C.ostree_repo_is_writable(repo.native(), &cerr))) {
 		goto out
 	}
@@ -126,7 +180,7 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		}
 	}
 
-	// If the user provided a skilist file
+	// If the user provided a skiplist file
 	if strings.Compare(options.SkipListFile, "") != 0 {
 		skipList = glib.ToGHashTable(unsafe.Pointer(C._g_hash_table_new_full()))
 		if err = parseFileByLine(options.SkipListFile, handleSkipListline, skipList, cancellable); err != nil {
@@ -135,14 +189,14 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	}
 
 	if options.AddMetadataString != nil {
-		err := parseKeyValueStrings(options.AddMetadataString, metadata)
+		metadata, err = parseKeyValueStrings(options.AddMetadataString)
 		if err != nil {
 			goto out
 		}
 	}
 
 	if options.AddDetachedMetadataString != nil {
-		err := parseKeyValueStrings(options.AddDetachedMetadataString, detachedMetadata)
+		_, err := parseKeyValueStrings(options.AddDetachedMetadataString)
 		if err != nil {
 			goto out
 		}
@@ -180,11 +234,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_resolve_rev(repo.native(), cbranch, C.TRUE, &cparent, &cerr))) {
 			goto out
 		}
-	}
-
-	cerr = nil
-	if !glib.GoBool(glib.GBoolean(C.ostree_repo_prepare_transaction(repo.native(), nil, cancellable, &cerr))) {
-		goto out
 	}
 
 	if options.LinkCheckoutSpeedup && !glib.GoBool(glib.GBoolean(C.ostree_repo_scan_hardlinks(repo.native(), cancellable, &cerr))) {
@@ -299,7 +348,6 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 	}
 
 	if !skipCommit {
-		var updateSummary C.gboolean
 		var timestamp C.guint64
 
 		if options.Timestamp.IsZero() {
@@ -308,8 +356,8 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 			C.g_date_time_unref(now)
 
 			cerr = nil
-			if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_commit(repo.native(), cparent, csubject, cbody,
-				metadata, C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr))) {
+			ret := C.ostree_repo_write_commit(repo.native(), cparent, csubject, cbody, metadata, C._ostree_repo_file(root), &ccommitChecksum, cancellable, &cerr)
+			if !glib.GoBool(glib.GBoolean(ret)) {
 				goto out
 			}
 		} else {
@@ -340,41 +388,11 @@ func Commit(repoPath, commitPath, branch string, opts commitOptions) (string, er
 		} else {
 			// TODO: Looks like I forgot to implement this.
 		}
-
-		cerr = nil
-		if !glib.GoBool(glib.GBoolean(C.ostree_repo_commit_transaction(repo.native(), &stats, cancellable, &cerr))) {
-			goto out
-		}
-
-		cerr = nil
-		if glib.GoBool(glib.GBoolean(updateSummary)) && !glib.GoBool(glib.GBoolean(C.ostree_repo_regenerate_summary(repo.native(), nil, cancellable, &cerr))) {
-			goto out
-		}
 	} else {
 		ccommitChecksum = C.CString(options.Parent)
 	}
 
-	if options.TableOutput {
-		var buffer bytes.Buffer
-
-		buffer.WriteString("Commit: ")
-		buffer.WriteString(C.GoString(ccommitChecksum))
-		buffer.WriteString("\nMetadata Total: ")
-		buffer.WriteString(strconv.Itoa((int)(stats.metadata_objects_total)))
-		buffer.WriteString("\nMetadata Written: ")
-		buffer.WriteString(strconv.Itoa((int)(stats.metadata_objects_written)))
-		buffer.WriteString("\nContent Total: ")
-		buffer.WriteString(strconv.Itoa((int)(stats.content_objects_total)))
-		buffer.WriteString("\nContent Written")
-		buffer.WriteString(strconv.Itoa((int)(stats.content_objects_written)))
-		buffer.WriteString("\nContent Bytes Written: ")
-		buffer.WriteString(strconv.Itoa((int)(stats.content_bytes_written)))
-		ret = buffer.String()
-	} else {
-		ret = C.GoString(ccommitChecksum)
-	}
-
-	return ret, nil
+	return C.GoString(ccommitChecksum), nil
 out:
 	if repo.native() != nil {
 		C.ostree_repo_abort_transaction(repo.native(), cancellable, nil)
@@ -390,27 +408,29 @@ out:
 }
 
 // Parse an array of key value pairs of the format KEY=VALUE and add them to a GVariant
-func parseKeyValueStrings(pairs []string, metadata *C.GVariant) error {
+func parseKeyValueStrings(pairs []string) (*C.GVariant, error) {
 	builder := C.g_variant_builder_new(C._g_variant_type(C.CString("a{sv}")))
+	defer C.g_variant_builder_unref(builder)
 
 	for iter := range pairs {
 		index := strings.Index(pairs[iter], "=")
-		if index >= 0 {
+		if index <= 0 {
 			var buffer bytes.Buffer
 			buffer.WriteString("Missing '=' in KEY=VALUE metadata '%s'")
 			buffer.WriteString(pairs[iter])
-			return errors.New(buffer.String())
+			return nil, errors.New(buffer.String())
 		}
 
-		key := pairs[iter][:index]
-		value := pairs[iter][index+1:]
-		C._g_variant_builder_add_twoargs(builder, (*C.gchar)(C.CString("{sv}")), C.CString(key), C.CString(value))
+		key := C.CString(pairs[iter][:index])
+		value := C.CString(pairs[iter][index+1:])
+
+		valueVariant := C.g_variant_new_string((*C.gchar)(value))
+
+		C._g_variant_builder_add_twoargs(builder, C.CString("{sv}"), key, valueVariant)
 	}
 
-	metadata = C.g_variant_builder_end(builder)
-	C.g_variant_ref_sink(metadata)
-
-	return nil
+	metadata := C.g_variant_builder_end(builder)
+	return C.g_variant_ref_sink(metadata), nil
 }
 
 // Parse a file linue by line and handle the line with the handleLineFunc
