@@ -66,11 +66,11 @@ func (v *GObject) Unref() {
 }
 
 func (v *GObject) RefSink() {
-	C.g_object_ref_sink(v.native())
+	C.g_object_ref_sink(C.gpointer(v.native()))
 }
 
 func (v *GObject) IsFloating() bool {
-	c := C.g_object_is_floating(v.native())
+	c := C.g_object_is_floating(C.gpointer(v.native()))
 	return GoBool(GBoolean(c))
 }
 
