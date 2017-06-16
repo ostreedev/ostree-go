@@ -222,7 +222,7 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 		filter_data.skip_list = (*C.GHashTable)(skipList.Ptr())
 		C._set_owner_uid((C.guint32)(options.OwnerUID))
 		C._set_owner_gid((C.guint32)(options.OwnerGID))
-		modifier = C._ostree_repo_commit_modifier_new_wrapper(flags, &filter_data, nil)
+		modifier = C._ostree_repo_commit_modifier_new_wrapper(flags, C.gpointer(&filter_data), nil)
 	}
 
 	if strings.Compare(options.Parent, "") != 0 {
@@ -245,7 +245,7 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 	if len(commitPath) == 0 && (len(options.Tree) == 0 || len(options.Tree[0]) == 0) {
 		currentDir := (*C.char)(C.g_get_current_dir())
 		objectToCommit = glib.ToGFile(unsafe.Pointer(C.g_file_new_for_path(currentDir)))
-		C.g_free(currentDir)
+		C.g_free(C.gpointer(currentDir))
 
 		if !glib.GoBool(glib.GBoolean(C.ostree_repo_write_directory_to_mtree(repo.native(), (*C.GFile)(objectToCommit.Ptr()), mtree, modifier, cancellable, &cerr))) {
 			goto out
@@ -469,14 +469,14 @@ func handleStatOverrideLine(line string, table *glib.GHashTable) error {
 	}
 
 	modeAdd = (C.guint)(C.g_ascii_strtod((*C.gchar)(C.CString(line)), nil))
-	C.g_hash_table_insert((*C.GHashTable)(table.Ptr()), C.g_strdup((*C.gchar)(C.CString(line[space+1:]))), C._guint_to_pointer(modeAdd))
+	C.g_hash_table_insert((*C.GHashTable)(table.Ptr()), C.gpointer(C.g_strdup((*C.gchar)(C.CString(line[space+1:])))), C._guint_to_pointer(modeAdd))
 
 	return nil
 }
 
 // Handle an individual line from a Skiplist file
 func handleSkipListline(line string, table *glib.GHashTable) error {
-	C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.g_strdup((*C.gchar)(C.CString(line))))
+	C.g_hash_table_add((*C.GHashTable)(table.Ptr()), C.gpointer( C.g_strdup((*C.gchar)(C.CString(line)))))
 
 	return nil
 }
