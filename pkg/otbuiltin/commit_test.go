@@ -174,24 +174,47 @@ func TestCommitTreeParentSuccess(t *testing.T) {
 	gopopulate.Tar(commitDir, tarPath)
 
 	//Test commit
+	repo, err := OpenRepo(repoDir)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
 	opts := NewCommitOptions()
 	opts.Subject = "blob"
 	opts.Tree = []string{"tar=" + tarPath}
 	opts.TarAutoCreateParents = true
 	branch := "test-branch"
-	ret, err := Commit(repoDir, "", branch, opts)
+	_, err = repo.PrepareTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	ret, err := repo.Commit("", branch, opts)
+	if err != nil {
+		t.Errorf("%s", err)
+	} else {
+		fmt.Println(ret)
+	}
+	_, err = repo.CommitTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	// Commit again, this time with a parent checksum
+	_, err = repo.PrepareTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	opts.Parent = ret
+	ret, err = repo.Commit("", branch, opts)
 	if err != nil {
 		t.Errorf("%s", err)
 	} else {
 		fmt.Println(ret)
 	}
 
-	// Commit again, this time with a parent checksum
-	opts.Parent = ret
-	ret, err = Commit(repoDir, "", branch, opts)
+	_, err = repo.CommitTransaction()
 	if err != nil {
 		t.Errorf("%s", err)
-	} else {
-		fmt.Println(ret)
 	}
 }

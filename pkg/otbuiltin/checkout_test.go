@@ -47,13 +47,27 @@ func TestCheckoutSuccessProcessOneBranch(t *testing.T) {
 	}
 
 	//Test commit
+	repo, err := OpenRepo(repoDir)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
 	opts := NewCommitOptions()
 	branch := "test-branch"
-	ret, err := Commit(repoDir, commitDir, branch, opts)
+	_, err = repo.PrepareTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	ret, err := repo.Commit(commitDir, branch, opts)
 	if err != nil {
 		t.Errorf("%s", err)
 	} else {
 		fmt.Println(ret)
+	}
+
+	_, err = repo.CommitTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
 	}
 
 	checkoutOpts := NewCheckoutOptions()
