@@ -33,11 +33,18 @@ import (
 // GIO types
 
 type GCancellable struct {
-	*GObject
+	*Object
 }
 
 func (self *GCancellable) native() *C.GCancellable {
 	return (*C.GCancellable)(unsafe.Pointer(self))
+}
+
+func (self *GCancellable) Native() uintptr {
+	if self == nil || self.Object == nil {
+		return uintptr(unsafe.Pointer(nil))
+	}
+	return uintptr(unsafe.Pointer(self.Object))
 }
 
 func (self *GCancellable) Ptr() unsafe.Pointer {

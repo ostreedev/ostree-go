@@ -15,3 +15,9 @@ _g_variant_lookup_string (GVariant *v, const char *key)
     return r;
   return NULL;
 }
+
+static GObject *
+toGObject(void *p)
+{
+  return (G_OBJECT(p));
+}
