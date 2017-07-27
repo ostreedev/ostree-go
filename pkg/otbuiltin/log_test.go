@@ -2,7 +2,9 @@ package otbuiltin
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/14rcole/gopopulate"
@@ -10,14 +12,14 @@ import (
 
 func TestLogSuccess(t *testing.T) {
 	// Make a base directory in which all of our test data resides
-	baseDir := "/tmp/otbuiltin-test/"
-	err := os.Mkdir(baseDir, 0777)
+	baseDir, err := ioutil.TempDir("", "otbuiltin-test-")
 	if err != nil {
 		t.Errorf("%s", err)
+		return
 	}
 	defer os.RemoveAll(baseDir)
 	// Make a directory in which the repo should exist
-	repoDir := baseDir + "repo"
+	repoDir := path.Join(baseDir, "repo")
 	err = os.Mkdir(repoDir, 0777)
 	if err != nil {
 		t.Errorf("%s", err)
@@ -32,7 +34,7 @@ func TestLogSuccess(t *testing.T) {
 	}
 
 	//Make a new directory full of random data to commit
-	commitDir := baseDir + "commit1"
+	commitDir := path.Join(baseDir, "commit1")
 	err = os.Mkdir(commitDir, 0777)
 	if err != nil {
 		t.Errorf("%s", err)
@@ -45,13 +47,28 @@ func TestLogSuccess(t *testing.T) {
 	}
 
 	//Test commit
+	repo, err := OpenRepo(repoDir)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
 	opts := NewCommitOptions()
 	branch := "test-branch"
-	ret, err := Commit(repoDir, commitDir, branch, opts)
+	_, err = repo.PrepareTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	ret, err := repo.Commit(commitDir, branch, opts)
 	if err != nil {
 		t.Errorf("%s", err)
 	} else {
 		fmt.Println(ret)
+	}
+
+	_, err = repo.CommitTransaction()
+	if err != nil {
+		t.Errorf("%s", err)
 	}
 
 	// Add more files to the commit dir and return an updated

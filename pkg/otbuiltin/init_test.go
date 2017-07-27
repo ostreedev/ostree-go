@@ -1,21 +1,22 @@
 package otbuiltin
 
 import (
+	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 )
 
 func TestInitSuccess(t *testing.T) {
 	// Make a base directory in which all of our test data resides
-	baseDir := "/tmp/otbuiltin-test/"
-	err := os.Mkdir(baseDir, 0777)
+	baseDir, err := ioutil.TempDir("", "otbuiltin-test-")
 	if err != nil {
 		t.Errorf("%s", err)
 		return
 	}
 	defer os.RemoveAll(baseDir)
 	// Make a directory in which the repo should exist
-	repoDir := baseDir + "repo"
+	repoDir := path.Join(baseDir, "repo")
 	err = os.Mkdir(repoDir, 0777)
 	if err != nil {
 		t.Errorf("%s", err)
@@ -35,15 +36,14 @@ func TestInitSuccess(t *testing.T) {
 
 func TestInitBareUser(t *testing.T) {
 	// Make a base directory in which all of our test data resides
-	baseDir := "/tmp/otbuiltin-test/"
-	err := os.Mkdir(baseDir, 0777)
+	baseDir, err := ioutil.TempDir("", "otbuiltin-test-")
 	if err != nil {
 		t.Errorf("%s", err)
 		return
 	}
 	defer os.RemoveAll(baseDir)
 	// Make a directory in which the repo should exist
-	repoDir := baseDir + "repo"
+	repoDir := path.Join(baseDir, "repo")
 	err = os.Mkdir(repoDir, 0777)
 	if err != nil {
 		t.Errorf("%s", err)
