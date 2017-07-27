@@ -23,6 +23,10 @@ type Repo struct {
 	ptr unsafe.Pointer
 }
 
+func cCancellable(c *glib.GCancellable) *C.GCancellable {
+	return (*C.GCancellable)(unsafe.Pointer(c.Native()))
+}
+
 // Converts an ostree repo struct to its C equivalent
 func (r *Repo) native() *C.OstreeRepo {
 	//return (*C.OstreeRepo)(r.Ptr())
