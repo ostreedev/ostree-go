@@ -33,47 +33,50 @@ import (
  * GObject
  */
 
+// ToGObject type converts an unsafe.Pointer as a native C GObject.
+// This function is exported for visibility in other gotk3 packages and
+// is not meant to be used by applications.
+func ToGObject(p unsafe.Pointer) *C.GObject {
+	return C.toGObject(p)
+}
+
 // IObject is an interface type implemented by Object and all types which embed
 // an Object.  It is meant to be used as a type for function arguments which
 // require GObjects or any subclasses thereof.
 type IObject interface {
 	toGObject() *C.GObject
-	ToObject() *GObject
+	ToObject() *Object
 }
 
 // GObject is a representation of GLib's GObject.
-type GObject struct {
-	ptr unsafe.Pointer
+type Object struct {
+	GObject *C.GObject
 }
 
-func (v *GObject) Ptr() unsafe.Pointer {
-	return v.ptr
-}
-
-func (v *GObject) native() *C.GObject {
-	if v == nil {
-		return nil
+func (v *Object) Ptr() unsafe.Pointer {
+	if v == nil || v.GObject == nil {
+		return unsafe.Pointer(nil)
 	}
-	return (*C.GObject)(v.ptr)
+	return unsafe.Pointer(v.GObject)
 }
 
-func (v *GObject) Ref() {
-	C.g_object_ref(C.gpointer(v.Ptr()))
+func (v *Object) Ref() {
+	C.g_object_ref(C.gpointer(v.GObject))
 }
 
-func (v *GObject) Unref() {
-	C.g_object_unref(C.gpointer(v.Ptr()))
+func (v *Object) Unref() {
+	C.g_object_unref(C.gpointer(v.GObject))
 }
 
-func (v *GObject) RefSink() {
-	C.g_object_ref_sink(C.gpointer(v.native()))
+func (v *Object) RefSink() {
+	C.g_object_ref_sink(C.gpointer(v.GObject))
 }
 
-func (v *GObject) IsFloating() bool {
-	c := C.g_object_is_floating(C.gpointer(v.native()))
+func (v *Object) IsFloating() bool {
+	c := C.g_object_is_floating(C.gpointer(v.GObject))
 	return GoBool(GBoolean(c))
 }
 
-func (v *GObject) ForceFloating() {
-	C.g_object_force_floating(v.native())
+func (v *Object) ForceFloating() {
+	C.g_object_force_floating(v.GObject)
 }

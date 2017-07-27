@@ -33,7 +33,7 @@ import (
 // GIO types
 
 type GCancellable struct {
-	*GObject
+	*Object
 }
 
 func (self *GCancellable) native() *C.GCancellable {
@@ -41,7 +41,10 @@ func (self *GCancellable) native() *C.GCancellable {
 }
 
 func (self *GCancellable) Ptr() unsafe.Pointer {
-	return unsafe.Pointer(self)
+	if self == nil || self.Object == nil {
+		return unsafe.Pointer(nil)
+	}
+	return unsafe.Pointer(self.Object)
 }
 
 // At the moment, no cancellable API, just pass nil
