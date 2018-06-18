@@ -1,0 +1,28 @@
+language: go
+sudo: required
+go:
+  - "1.9.x"
+  - "1.10.x"
+  - tip
+
+matrix:
+  allow_failures:
+    - go: tip
+  fast_finish: true
+
+# Don't send out emails
+notifications:
+  email: false
+
+    
+before_script:
+  - wget http://mirrors.kernel.org/ubuntu/pool/universe/o/ostree/libostree-dev_2018.4-2_amd64.deb
+  - sudo dpkg -i --force-all ./libostree-dev_2018.4-2_amd64.deb
+  - mkdir -p $HOME/gopath/src/github.com/ostreedev/ostree-go/
+  - rsync -az ${TRAVIS_BUILD_DIR}/ $HOME/gopath/src/github.com/ostreedev/ostree-go/
+
+script:
+  - make install-tools
+  - make deps
+  - make lint
+  - make test
