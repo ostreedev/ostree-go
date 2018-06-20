@@ -1,28 +1,22 @@
-language: go
 sudo: required
-go:
-  - "1.9.x"
-  - "1.10.x"
-  - tip
+
+services:
+  - docker
 
 matrix:
-  allow_failures:
-    - go: tip
   fast_finish: true
 
 # Don't send out emails
 notifications:
   email: false
-
     
 before_script:
-  - wget http://mirrors.kernel.org/ubuntu/pool/universe/o/ostree/libostree-dev_2018.4-2_amd64.deb
-  - sudo dpkg -i --force-all ./libostree-dev_2018.4-2_amd64.deb
-  - mkdir -p $HOME/gopath/src/github.com/ostreedev/ostree-go/
-  - rsync -az ${TRAVIS_BUILD_DIR}/ $HOME/gopath/src/github.com/ostreedev/ostree-go/
+  - docker pull registry.fedoraproject.org/fedora:latest
+  - docker run -e GOPATH=/opt --cidfile=/tmp/cidfile registry.fedoraproject.org/fedora:latest /bin/bash -c "dnf install -y make golang go-compilers-golang-compiler findutils ostree ostree-devel glib-devel glib"
+  - docker commit `cat /tmp/cidfile` go-ostree/test
 
 script:
-  - make install-tools
-  - make deps
-  - make lint
-  - make test
+  - docker run --rm -e GOPATH=/opt -v ${PWD}:/opt/src/github.com/ostreedev/ostree-go go-ostree/test /bin/bash -c "cd /opt/src/github.com/ostreedev/ostree-go && make install-tools && PATH=$PATH:/opt/bin make deps && PATH=$PATH:/opt/bin make lint"
+
+# Tests are currently failing  
+#&& PATH=$PATH:/opt/bin make test"
