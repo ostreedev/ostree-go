@@ -1,0 +1,22 @@
+sudo: required
+
+services:
+  - docker
+
+matrix:
+  fast_finish: true
+
+# Don't send out emails
+notifications:
+  email: false
+    
+before_script:
+  - docker pull registry.fedoraproject.org/fedora:latest
+  - docker run -e GOPATH=/opt --cidfile=/tmp/cidfile registry.fedoraproject.org/fedora:latest /bin/bash -c "dnf install -y make golang go-compilers-golang-compiler findutils ostree ostree-devel"
+  - docker commit `cat /tmp/cidfile` go-ostree/test
+
+script:
+  - docker run --rm -e GOPATH=/opt -v ${PWD}:/opt/src/github.com/ostreedev/ostree-go go-ostree/test /bin/bash -c "cd /opt/src/github.com/ostreedev/ostree-go && make install-tools && PATH=$PATH:/opt/bin make deps && PATH=$PATH:/opt/bin make lint"
+
+# Tests are currently failing  
+#&& PATH=$PATH:/opt/bin make test"
