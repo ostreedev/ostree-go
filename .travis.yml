@@ -16,7 +16,4 @@ before_script:
   - docker commit `cat /tmp/cidfile` go-ostree/test
 
 script:
-  - docker run --rm -e GOPATH=/opt -v ${PWD}:/opt/src/github.com/ostreedev/ostree-go go-ostree/test /bin/bash -c "cd /opt/src/github.com/ostreedev/ostree-go && make install-tools && PATH=$PATH:/opt/bin make deps && PATH=$PATH:/opt/bin make lint"
-
-# Tests are currently failing  
-#&& PATH=$PATH:/opt/bin make test"
+  - docker run --rm -e GOPATH=/opt -v ${PWD}:/opt/src/github.com/ostreedev/ostree-go go-ostree/test /bin/bash -c "cd /opt/src/github.com/ostreedev/ostree-go && make install-tools && PATH=$PATH:/opt/bin make deps && PATH=$PATH:/opt/bin make lint && PATH=$PATH:/opt/bin make test"
