@@ -125,6 +125,7 @@ func (repo *Repo) RegenerateSummary() error {
 
 // Commits a directory, specified by commitPath, to an ostree repo as a given branch
 func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string, error) {
+	// TODO(lucab): `options` is global un-synchronized mutable state, get rid of it.
 	options = opts
 
 	var err error
@@ -196,7 +197,7 @@ func (repo *Repo) Commit(commitPath, branch string, opts commitOptions) (string,
 	}
 
 	if options.AddDetachedMetadataString != nil {
-		_, err := parseKeyValueStrings(options.AddDetachedMetadataString)
+		_, err = parseKeyValueStrings(options.AddDetachedMetadataString)
 		if err != nil {
 			goto out
 		}
