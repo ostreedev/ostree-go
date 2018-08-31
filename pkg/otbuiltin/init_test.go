@@ -62,3 +62,36 @@ func TestInitBareUser(t *testing.T) {
 		return
 	}
 }
+
+func TestParseRepoMode(t *testing.T) {
+	tests := []struct {
+		in    string
+		isErr bool
+	}{
+		{
+			"archive-z2",
+			false,
+		},
+		{
+			"bare",
+			false,
+		},
+		{
+			"bare-user",
+			false,
+		},
+		{
+			"fooMode",
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		_, err := parseRepoMode(tt.in)
+		if tt.isErr && err == nil {
+			t.Fatal("got unexpected nil error")
+		} else if !tt.isErr && err != nil {
+			t.Fatalf("got unexpected error %q", err)
+		}
+	}
+}
