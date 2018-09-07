@@ -85,7 +85,9 @@ func TestCommitTreeSuccess(t *testing.T) {
 	}
 
 	// Initialize the repo
-	initOk, err := Init(repoDir, NewInitOptions())
+	repoOpts := NewInitOptions()
+	repoOpts.Mode = "archive"
+	initOk, err := Init(repoDir, repoOpts)
 	if err != nil {
 		t.Fatalf("failed to initialize the repo: %s", err)
 	}
@@ -120,9 +122,6 @@ func TestCommitTreeSuccess(t *testing.T) {
 		t.Fatalf("failed to prepare transaction: %s", err)
 	}
 
-	// TODO(lucab): investigate flake and re-enable commit.
-	t.Skip("flake: fchown EPERM")
-
 	if _, err := repo.Commit("", branch, opts); err != nil {
 		t.Fatalf("failed to commit: %s", err)
 	}
@@ -147,7 +146,9 @@ func TestCommitTreeParentSuccess(t *testing.T) {
 	}
 
 	// Initialize the repo
-	initOk, err := Init(repoDir, NewInitOptions())
+	repoOpts := NewInitOptions()
+	repoOpts.Mode = "archive"
+	initOk, err := Init(repoDir, repoOpts)
 	if err != nil {
 		t.Fatalf("failed to initialize the repo: %s", err)
 	}
@@ -178,9 +179,6 @@ func TestCommitTreeParentSuccess(t *testing.T) {
 	opts.Tree = []string{"tar=" + tarPath}
 	opts.TarAutoCreateParents = true
 	branch := "test-branch"
-
-	// TODO(lucab): investigate flake and re-enable commit.
-	t.Skip("flake: fchown EPERM")
 
 	// Commit a first time
 	if _, err := repo.PrepareTransaction(); err != nil {
