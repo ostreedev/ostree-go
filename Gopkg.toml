@@ -26,7 +26,7 @@
 
 
 [[constraint]]
-  branch = "master"
+  branch = "main"
   name = "github.com/14rcole/gopopulate"
 
 [prune]
